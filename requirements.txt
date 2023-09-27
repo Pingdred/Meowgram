@@ -1,0 +1,3 @@
+requests
+cheshire_cat_api
+python-telegram-bot
