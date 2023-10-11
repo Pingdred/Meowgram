@@ -2,6 +2,7 @@ import json
 import asyncio
 import requests
 import tempfile
+import logging
 
 import cheshire_cat_api as ccat
 from cheshire_cat_api.utils import Settings
@@ -12,26 +13,29 @@ from telegram.ext import filters, ApplicationBuilder, ContextTypes, MessageHandl
 class CCatTelegramBot():
 
     def __init__(self, telegram_token: str, ccat_url: str = "localhost", ccat_port: int = 1865) -> None:
+
         # Queue of the messages to send on telegram
         self._out_queue = asyncio.Queue()
-
-        self._loop = asyncio.get_event_loop()
 
         ccat_settings = Settings()
 
         ccat_settings.base_url = ccat_url
         ccat_settings.port = ccat_port
 
+        # Instantiate the Cheshire Cat client
         self.ccat = ccat.CatClient(
             settings=ccat_settings,
             on_message= self._ccat_message_callback
         )
 
+        # Create telegram application
         self.telegram = ApplicationBuilder().token(telegram_token).build()
 
+        # Create messages handlers
         self.text_message_handler =  MessageHandler(filters.TEXT & (~filters.COMMAND), self._text_handler)
         self.voice_message_handler = MessageHandler(filters.VOICE & (~filters.COMMAND), self._voice_note_handler)
 
+        # Add handlers to telegram application
         self.telegram.add_handler(self.text_message_handler)
         self.telegram.add_handler(self.voice_message_handler)
 
@@ -39,29 +43,43 @@ class CCatTelegramBot():
 
 
     async def run(self):
-        async with self.telegram:
+        try:
             await self.telegram.initialize()
+            await self.telegram.updater.start_polling(read_timeout=10)  
             await self.telegram.start()
-            await self.telegram.updater.start_polling()
 
-            while True:
-                msg = await self._out_queue.get()
-                msg = json.loads(msg)
-                    
-                await self.telegram.bot.send_message(
-                    chat_id=msg["user_id"], 
-                    text=msg["content"]
-                )         
+            await self._send_messages()
+
+        except asyncio.CancelledError:
+            await self.telegram.updater.stop()
+            await self.telegram.stop()
+        finally:
+            self.ccat.close()
+            await self.telegram.shutdown()
+
+
+    async def _send_messages(self):
+        while True:
+            msg = await self._out_queue.get()
+            msg = json.loads(msg)
+
+            await self.telegram.bot.send_message(
+                chat_id=msg["user_id"],
+                text=msg["content"]
+            )
 
 
     def _ccat_message_callback(self,message: str):
         # Websocket on_mesage callback
 
         # Put the new message from the cat in the out queue
-        self._loop.call_soon_threadsafe(self._out_queue.put_nowait, message)
+        # the websocket runs in its own thread
         # call_soon_threadsafe: https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_soon_threadsafe
         #                       https://stackoverflow.com/questions/53669218/asyncio-queue-get-delay
-
+        #self._loop.call_soon_threadsafe(self._out_queue.put_nowait, message)
+        asyncio.run(self._out_queue.put(message))
+       
+       
 
     async def _text_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Send mesage to the cat
