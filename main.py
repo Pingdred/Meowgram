@@ -1,9 +1,13 @@
+import os
 import logging
 import asyncio
+from dotenv import load_dotenv
 
 from ccat_telegram_bot import CCatTelegramBot
 
-TOKEN = ""
+load_dotenv()
+
+TOKEN = os.getenv("BOT_TOKEN")
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
