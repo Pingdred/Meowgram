@@ -14,6 +14,8 @@ class CCatTelegramBot():
 
     def __init__(self, telegram_token: str, ccat_url: str = "localhost", ccat_port: int = 1865) -> None:
 
+        self._loop = asyncio.get_event_loop()
+
         # Queue of the messages to send on telegram
         self._out_queue = asyncio.Queue()
 
@@ -49,7 +51,8 @@ class CCatTelegramBot():
             await self.telegram.updater.start_polling(read_timeout=10)  
             await self.telegram.start()
 
-            await self._send_messages()
+            responce_loop = self._loop.create_task(self._send_messages())
+            await responce_loop
 
         except asyncio.CancelledError:
             logging.info("STOPPING THE APPLICATION")
