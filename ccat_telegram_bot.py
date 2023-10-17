@@ -25,7 +25,8 @@ class CCatTelegramBot():
         # Instantiate the Cheshire Cat client
         self.ccat = ccat.CatClient(
             settings=ccat_settings,
-            on_message= self._ccat_message_callback
+            on_message=self._ccat_message_callback,
+            on_close=self._ccat_on_close
         )
 
         # Create telegram application
@@ -55,8 +56,8 @@ class CCatTelegramBot():
             await self.telegram.updater.stop()
             await self.telegram.stop()
         finally:
-            self.ccat.close()
             await self.telegram.shutdown()
+            self.ccat.close()
 
 
     async def _send_messages(self):
@@ -80,6 +81,8 @@ class CCatTelegramBot():
         #self._loop.call_soon_threadsafe(self._out_queue.put_nowait, message)
         asyncio.run(self._out_queue.put(message))
        
+    def _ccat_on_close(self, close_status_code: int, msg: str):
+        logging.info("WS connection to CheshireCat closed")
        
 
     async def _text_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
