@@ -51,6 +51,7 @@ class CCatTelegramBot():
             await self._send_messages()
 
         except asyncio.CancelledError:
+            logging.info("STOPPING THE APPLICATION")
             await self.telegram.updater.stop()
             await self.telegram.stop()
         finally:

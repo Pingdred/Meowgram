@@ -3,7 +3,7 @@ import asyncio
 
 from ccat_telegram_bot import CCatTelegramBot
 
-TOKEN = "6431169895:AAF2Uomgfa6RvqNtpSFeAPSmVVi42rjbHCs"
+TOKEN = ""
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
