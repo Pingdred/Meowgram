@@ -74,15 +74,14 @@ class CCatTelegramBot():
             )
 
 
-    def _ccat_message_callback(self,message: str):
+    def _ccat_message_callback(self, message: str):
         # Websocket on_mesage callback
 
         # Put the new message from the cat in the out queue
         # the websocket runs in its own thread
         # call_soon_threadsafe: https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_soon_threadsafe
         #                       https://stackoverflow.com/questions/53669218/asyncio-queue-get-delay
-        #self._loop.call_soon_threadsafe(self._out_queue.put_nowait, message)
-        asyncio.run(self._out_queue.put(message))
+        self._loop.call_soon_threadsafe(self._out_queue.put_nowait, message)
        
     def _ccat_on_close(self, close_status_code: int, msg: str):
         logging.info("WS connection to CheshireCat closed")
