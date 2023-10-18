@@ -8,7 +8,7 @@ import cheshire_cat_api as ccat
 from cheshire_cat_api.utils import Settings
 
 from telegram import Update
-from telegram.ext import filters, ApplicationBuilder, ContextTypes, MessageHandler, Updater
+from telegram.ext import filters, ApplicationBuilder, ContextTypes, MessageHandler
 
 class CCatTelegramBot():
 
@@ -82,7 +82,8 @@ class CCatTelegramBot():
         # call_soon_threadsafe: https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_soon_threadsafe
         #                       https://stackoverflow.com/questions/53669218/asyncio-queue-get-delay
         self._loop.call_soon_threadsafe(self._out_queue.put_nowait, message)
-       
+    
+    
     def _ccat_on_close(self, close_status_code: int, msg: str):
         logging.info("WS connection to CheshireCat closed")
        
