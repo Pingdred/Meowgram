@@ -10,7 +10,7 @@ from telegram import Update
 from telegram.ext import filters, ApplicationBuilder, ContextTypes, MessageHandler
 from telegram.constants import ChatAction
 
-T = 10
+T = 30*60
 
 class CCatConnection:
 
@@ -186,7 +186,7 @@ class Meogram():
 
         # Send mesage to the cat
         self._connections[chat_id].ccat.send(
-            message="*[Voice Note]* But you can't hear.",
+            message="*[Voice Note]* (You can't hear)",
             meogram_voice=voice_message_id
         )
 
