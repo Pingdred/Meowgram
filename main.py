@@ -3,7 +3,7 @@ import logging
 import asyncio
 from dotenv import load_dotenv
 
-from ccat_telegram_bot import Meogram
+from meowgram import Meogram
 
 load_dotenv()
 
