@@ -172,7 +172,7 @@ class Meogram():
 
     async def _voice_note_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-        voice_message_id = update.message.voice.file_id
+        voice_message_file = await update.message.voice.get_file()
         chat_id = update.effective_chat.id
 
         if chat_id not in self._connections:
@@ -183,11 +183,11 @@ class Meogram():
                     ccat_url=self.ccat_url,
                     ccat_port=self.ccat_port
                 )
-
+            
         # Send mesage to the cat
         self._connections[chat_id].ccat.send(
             message="*[Voice Note]* (You can't hear)",
-            meogram_voice=voice_message_id
+            meowgram_voice=voice_message_file.file_path
         )
 
 
