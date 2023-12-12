@@ -53,4 +53,4 @@ First thing to do is install the plugin Whispering cat from the page Plugin in t
 
 ![Screenshot from 2023-12-12 12-07-16](https://github.com/Pingdred/Meowgram/assets/67059270/ff652354-0e9e-4505-b307-6af90d56d0cf)
 
-Then click on the settings wheel set your Api Key, the language and in the field `Audio Key` write `meowgram voice`.
+Then click on the settings wheel set your Api Key, the language and in the field `Audio Key` write `meowgram_voice`.
