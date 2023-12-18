@@ -10,7 +10,7 @@ from ccat_connection import CCatConnection
 
 T = 30*60
 
-class Meogram():
+class Meowgram():
 
     def __init__(self, telegram_token: str, ccat_url: str = "localhost", ccat_port: int = 1865) -> None:
 

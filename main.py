@@ -3,7 +3,7 @@ import logging
 import asyncio
 from dotenv import load_dotenv
 
-from meowgram import Meogram
+from meowgram import Meowgram
 
 load_dotenv()
 
@@ -18,7 +18,7 @@ logging.basicConfig(
 )
 
 async def main():
-    bot = Meogram(
+    bot = Meowgram(
             telegram_token=TOKEN,
             ccat_url=CCAT_URL,
             ccat_port=CCAT_PORT                  
