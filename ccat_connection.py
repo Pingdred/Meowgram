@@ -30,7 +30,29 @@ class CCatConnection:
             on_message=self._ccat_message_callback
         )
 
-        self.last_interaction = time.time()
+        # Easy access to send
+        self.send = self.ccat.send
+
+        # This event is not None if we are waiting for ws connection open
+        self._stop_waiting_connection = None
+       
+
+    async def connect(self):
+
+        if self._stop_waiting_connection is not None:
+            logging.warning(f"Already waiting for websocket connection for user {self.user_id}")
+            return
+        
+        self.ccat.connect_ws()
+
+        logging.info(f"Waiting for websocket connection for user {self.user_id}")
+
+        # Create the event to stop waiting for connection
+        self._stop_waiting_connection = asyncio.Event()
+
+        # Wait connection
+        await self._stop_waiting_connection.wait()
+        self._stop_waiting_connection = None
 
 
     def _ccat_message_callback(self, message: str):
@@ -44,15 +66,22 @@ class CCatConnection:
         #                       https://stackoverflow.com/questions/53669218/asyncio-queue-get-delay
         self._loop.call_soon_threadsafe(self._out_queue.put_nowait, (message, self.user_id))
     
-    
+
     def _on_open(self):
-        logging.info(f"WS connection with user `{self.user_id}` to CheshireCat opened")
+
+        # Set the event to stop waiting for connection
+        if self._stop_waiting_connection:
+            self._stop_waiting_connection.set()
 
 
-    def _on_close(self, close_status_code: int, msg: str):
-        logging.info(f"WS connection `{self.user_id}` to CheshireCat closed")
-    
+    def _on_close(self, status_code: int, msg: str):
 
-    def send(self, message: str, **kwargs):
-        self.last_interaction = time.time()
-        self.ccat.send(message=message, **kwargs)
+        # on_close is called also if there is a connection error 
+        # so the event is set if we are waiting for connection
+        if self._stop_waiting_connection:
+            self._stop_waiting_connection.set()
+
+    @property
+    def is_connected(self):
+        return self.ccat.is_ws_connected
+        
