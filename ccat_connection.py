@@ -1,10 +1,8 @@
 import asyncio
 import logging
 import json
-import time
 
-import cheshire_cat_api as ccat
-from cheshire_cat_api.utils import Settings, WebSocketSettings
+from cheshire_cat_api import CatClient, Config
 
 
 class CCatConnection:
@@ -18,19 +16,18 @@ class CCatConnection:
         # Queue of the messages to send on telegram
         self._out_queue = out_queue
         
-        ws_settings = WebSocketSettings(user_id=user_id)
-        ccat_settings = Settings(
+        conf = Config(
             base_url=ccat_url,
             port=ccat_port,
-            ws=ws_settings
+            user_id=user_id,
         )
 
         # Instantiate the Cheshire Cat client
-        self.ccat = ccat.CatClient(
-            settings=ccat_settings,
-            on_message=self._ccat_message_callback,
+        self.ccat = CatClient(
+            config=conf,
             on_open=self._on_open,
-            on_close=self._on_close
+            on_close=self._on_close,
+            on_message=self._ccat_message_callback
         )
 
         self.last_interaction = time.time()
