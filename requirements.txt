@@ -1,4 +1,5 @@
 requests
-cheshire_cat_api
 python-telegram-bot
+cheshire-cat-api==1.4.1
 python-dotenv
+colorlog
