@@ -1,14 +1,23 @@
+import time
+import json
 import asyncio
 import logging
-import time
+
+from typing import Dict
 
 from telegram import Update
-from telegram.ext import filters, ApplicationBuilder, ContextTypes, MessageHandler
+from telegram.ext import (
+    Application, 
+    ApplicationBuilder, 
+    ContextTypes, 
+    MessageHandler, 
+    ApplicationHandlerStop, 
+    filters
+)
 from telegram.constants import ChatAction
 
 from ccat_connection import CCatConnection
 
-T = 30*60
 
 class Meowgram():
 
@@ -41,9 +50,6 @@ class Meowgram():
             await self.telegram.initialize()
             await self.telegram.updater.start_polling(read_timeout=10)  
             await self.telegram.start()
-
-            # Start closing idle ws connection each T seconds
-            self._loop.call_later(T, self._close_unactive_connections)
 
             responce_loop = self._loop.create_task(self._send_messages())
             await responce_loop
@@ -135,27 +141,10 @@ class Meowgram():
         )
 
 
-    def _close_unactive_connections(self):
-            logging.info(msg="Closing inactive connections")
 
-            t = time.time()
 
-            marked_for_deletion = []
-            for key, conn in self._connections.items():
 
-                if conn.ccat.is_closed:
-                    marked_for_deletion.append(key)
-                    break
 
-                if t - conn.last_interaction > 20:
-                    # Close the connection as mark it for delete
-                    conn.ccat.close()
-                    marked_for_deletion.append(key)
 
-            # Delete closed connections
-            for user_id in marked_for_deletion:
-                del self._connections[user_id]  
 
-            # Scheduling the next running
-            self._loop.call_later(T, self._close_unactive_connections)
 
