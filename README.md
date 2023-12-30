@@ -1,5 +1,10 @@
 # Meowgram
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Pingdred/Meowgram/main/logo.png"/>
+</p>
+
+
 Telegram client for the [CheshireCat Ai](https://cheshirecat.ai/).
 
 ## Prerequisites
