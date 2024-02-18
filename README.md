@@ -42,7 +42,7 @@ CHESHIRE_CAT_URL="localhost"
 CHESHIRE_CAT_PORT=1865
 ```
 
-In the repot there is a file `.env.example` you can use.
+In the repo there is a file `.env.example` you can use.
 
 After that make sure you chashire Cat instance is up and reachable, you can follow this [quick start](https://github.com/cheshire-cat-ai/core#quickstart) to do that.
 
