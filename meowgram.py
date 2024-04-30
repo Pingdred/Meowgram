@@ -157,7 +157,7 @@ class Meowgram():
     async def _dispatch_chat_message(self, message, user_id):
         send_params = message.get("meowgram", {}).get("send_params", {})
 
-        tts_url = message.get("media", {}).get("tts", None)
+        tts_url = message.get("tts", None)
         if tts_url:
             # Get audio file
             response = requests.get(tts_url)
@@ -204,6 +204,7 @@ class Meowgram():
 
     def convert_audio_to_voice(self, input_path: str) -> str:
         # https://stackoverflow.com/questions/56448384/telegram-bot-api-voice-message-audio-spectrogram-is-missing-a-bug
+        logging.info("Convert audio file to Telegram voice note format")
         output_path = os.path.splitext(input_path)[0] + "_converted.ogg"
         (
             ffmpeg.input(input_path)
