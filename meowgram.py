@@ -156,6 +156,9 @@ class Meowgram():
 
     async def _dispatch_chat_message(self, message, user_id):
         send_params = message.get("meowgram", {}).get("send_params", {})
+        settings = message.get("meowgram", {}).get("settings", {
+            "show_tts_text": False
+        })
 
         tts_url = message.get("tts", None)
         if tts_url:
@@ -186,7 +189,7 @@ class Meowgram():
                     chat_id=user_id,
                     voice=open(speech_file_ogg_path, "rb"),
                     duration=sf.info(speech_file_ogg_path).duration,
-                    #caption=message["content"],
+                    caption=message["content"] if settings["show_tts_text"] else None,
                     filename=speech_file_ogg_path,
                     **send_params
                 )
