@@ -1,39 +1,40 @@
-# Meowgram
+## Meowgram
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/Pingdred/Meowgram/main/logo.png"/>
 </p>
 
-
-Telegram client for the [CheshireCat Ai](https://cheshirecat.ai/).
+Welcome to Meowgram, a Telegram client designed to seamlessly integrate with [Cheshire Cat Ai](https://cheshirecat.ai/).
 
 ## Prerequisites
 
 - `python >=3.10`
 - Access to an instance of the [Cheshire Cat](https://github.com/cheshire-cat-ai/core#quickstart)
-- The `TOKEN` of a Telegram bot, you can create one using [Bot Father](https://core.telegram.org/bots/features#creating-a-new-bot)
+- A Telegram bot `TOKEN`, which you can obtain by creating one through [Bot Father](https://core.telegram.org/bots/features#creating-a-new-bot)
 
-## Install
+## Installation
 
-Clone the repo:
+To get started, follow these simple steps:
 
-```bash
-git clone https://github.com/Pingdred/Meowgram.git
-```
+Clone the repository:
 
-Enter in the created folder:
+  ```bash
+  git clone https://github.com/Pingdred/Meowgram.git
+  ```
 
-```bash
-cd Meowgram
-```
+Navigate to the project directory:
 
-Install the requirements:
+  ```bash
+  cd Meowgram
+  ```
+
+Install the necessary dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Create an `.env` file setting the following parameters:
+Create an `.env` file and set the following parameters:
 
 ```toml
 BOT_TOKEN="YOUR-BOT-TOKEN"
@@ -42,20 +43,47 @@ CHESHIRE_CAT_URL="localhost"
 CHESHIRE_CAT_PORT=1865
 ```
 
-In the repo there is a file `.env.example` you can use.
+You can use the provided `.env.example` file as a template.
 
-After that make sure you chashire Cat instance is up and reachable, you can follow this [quick start](https://github.com/cheshire-cat-ai/core#quickstart) to do that.
+> [!IMPORTANT]
+> Ensure your Cheshire Cat instance is up and running by following the [quick start guide](https://github.com/cheshire-cat-ai/core#quickstart).
 
-Run the telegram bot and start chatting:
+Run the Meowgram Telegram bot:
 
 ```bash
 python main.py
 ```
-## Set-up speech to text
-First thing to do is install the plugin Whispering cat from the page Plugin in the Cheshire Cat Admin:
 
-![Screenshot from 2023-12-12 12-08-02](https://github.com/Pingdred/Meowgram/assets/67059270/dc6b0c9f-209b-425f-b039-619fa68f0dce)
+## Meowgram Connect
 
-![Screenshot from 2023-12-12 12-07-16](https://github.com/Pingdred/Meowgram/assets/67059270/ff652354-0e9e-4505-b307-6af90d56d0cf)
+Enhance your chatting experience with Meowgram Connect, a plugin designed to offer additional chat settings customization options. Although currently limited, more features are planned for future updates.
 
-Then click on the settings wheel set your Api Key, the language and in the field `Audio Key` write `meowgram_voice`.
+You can find Meowgram Connect in the plugin registry and install it directly from the Cheshire Cat admin interface under the Plugins tab.
+
+![Meowgram Connect](<Screenshot from 2024-05-13 15-46-05.png>)
+
+## Sending Voice Notes
+
+To send voice notes using Meowgram, you'll need to install the [Whispering Cat](https://github.com/Furrmidable-Crew/Whispering_Cat) plugin in your Cheshire Cat instance. Whispering Cat enables speech-to-text functionality, allowing you to dictate messages seamlessly.
+
+> [!Note]
+> While Whispering Cat is currently the sole plugin supporting this feature, expect more options to become available in the future.
+
+You can install Whispering Cat from the Plugins tab in the Cheshire Cat Admin:
+
+![Whispering Cat](https://github.com/Pingdred/Meowgram/assets/67059270/ff652354-0e9e-4505-b307-6af90d56d0cf)
+
+Be sure to configure Whispering Cat by providing your API Key, preferred language, and setting the `Audio Key` to `meowgram_voice`.
+
+## Receiving Voice Notes
+
+Similar to sending voice notes, receiving them in Meowgram requires the installation of a plugin in Cheshire Cat. The [TTS powered by OpenAI](https://github.com/Pingdred/openai-tts) plugin facilitates speech-to-text conversion for incoming voice messages.
+
+> [!Note]
+> While currently the only supported plugin for this functionality, expect additional options to emerge in the future.
+
+You can install TTS powered by OpenAI from the Plugins tab in the Cheshire Cat Admin:
+
+![TTS powered by OpenAI](<Screenshot from 2024-05-13 15-46-35.png>)
+
+After installation, ensure the `Response type` in the plugin settings is set to `TTS key`. Enjoy seamless communication with Meowgram!
