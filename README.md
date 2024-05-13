@@ -77,7 +77,7 @@ Be sure to configure Whispering Cat by providing your API Key, preferred languag
 
 ## Receiving Voice Notes
 
-Similar to sending voice notes, receiving them in Meowgram requires the installation of a plugin in Cheshire Cat. The [TTS powered by OpenAI](https://github.com/Pingdred/openai-tts) plugin facilitates speech-to-text conversion for incoming voice messages.
+Similar to sending voice notes, receiving them in Meowgram requires the installation of a plugin in Cheshire Cat. The [TTS powered by OpenAI](https://github.com/Pingdred/openai-tts) plugin facilitates text-to-speech conversion.
 
 > [!Note]
 > While currently the only supported plugin for this functionality, expect additional options to emerge in the future.
