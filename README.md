@@ -60,7 +60,7 @@ Enhance your chatting experience with Meowgram Connect, a plugin designed to off
 
 You can find Meowgram Connect in the plugin registry and install it directly from the Cheshire Cat admin interface under the Plugins tab.
 
-![Meowgram Connect](<Screenshot from 2024-05-13 15-46-05.png>)
+![Meowgram Connect](/assets/Screenshot%20from%202024-05-13%2015-46-05.png)
 
 ## Sending Voice Notes
 
@@ -84,6 +84,6 @@ Similar to sending voice notes, receiving them in Meowgram requires the installa
 
 You can install TTS powered by OpenAI from the Plugins tab in the Cheshire Cat Admin:
 
-![TTS powered by OpenAI](<Screenshot from 2024-05-13 15-46-35.png>)
+![TTS powered by OpenAI](/assets/Screenshot%20from%202024-05-13%2015-46-35.png)
 
 After installation, ensure the `Response type` in the plugin settings is set to `TTS key`. Enjoy seamless communication with Meowgram!
