@@ -250,19 +250,7 @@ class Meowgram():
     async def _chat_history_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = update.effective_chat.id
 
-        self._connections[user_id].ccat.memory.wipe_conversation_history()
-        
-        # ccat_url: str = "localhost"
-        # ccat_port: int = 1865
-        # conf = Config(
-        #     base_url=ccat_url,
-        #     port=ccat_port,
-        #     user_id=user_id,
-        # )
-        
-        # api_client=cheshire_cat_api.ApiClient(conf)
-        # api_instance = cheshire_cat_api.MemoryApi(api_client)
-        # api_instance.wipe_conversation_history()
+        self._connections[user_id].ccat.memory.wipe_conversation_history(_headers={"user_id":user_id})
 
         await self.bot.send_message(
             chat_id=user_id,
