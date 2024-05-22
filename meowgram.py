@@ -17,7 +17,8 @@ from telegram.ext import (
     ContextTypes, 
     MessageHandler, 
     ApplicationHandlerStop, 
-    filters
+    filters,
+    CommandHandler
 )
 from telegram.constants import ChatAction
 
@@ -55,10 +56,17 @@ class Meowgram():
         self.voice_message_handler = MessageHandler(filters.VOICE & (~filters.COMMAND), self._voice_note_handler)
         self.document_message_handler = MessageHandler(filters.Document.ALL & (~filters.COMMAND), self._document_handler)
 
+        ### ADDING A COMMAND BUTTON TO BE CALLED clear_chat THROUGH SETTINGS IN BOTFATHER ###
+        # Command handlers
+        self.clear_chat_history_handler = CommandHandler("clear_chat", self._chat_history_handler)
+
         self.telegram.add_handler(handler=self.document_message_handler, group=1)
         self.telegram.add_handler(handler=self.voice_message_handler, group=1)
         self.telegram.add_handler(handler=self.text_message_handler, group=1)
         self.telegram.add_handler(handler=self.document_message_handler, group=1)
+
+        ### ADDING A COMMAND BUTTON TO BE CALLED clear_chat THROUGH SETTINGS IN BOTFATHER ###
+        self.telegram.add_handler(handler=self.clear_chat_history_handler,group=1)
 
     async def run(self):
         # https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html#telegram.ext.Application.run_polling
@@ -235,3 +243,16 @@ class Meowgram():
                 chat_id=user_id,
                 action=ChatAction.TYPING
             )
+
+    
+    ### TRYING TO ADD THE COMMAND BUTTON WIPE CHAT HISTORY ###
+
+    async def _chat_history_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user_id = update.effective_chat.id
+
+        self._connections[user_id].ccat.memory.wipe_conversation_history(_headers={"user_id":user_id})
+
+        await self.bot.send_message(
+            chat_id=user_id,
+            text="Deleted chat memory..."
+        )
