@@ -1,6 +1,6 @@
 requests
 python-telegram-bot
-cheshire-cat-api==1.4.1
+cheshire-cat-api
 python-dotenv
 colorlog
 soundfile

@@ -48,29 +48,30 @@ class Meowgram():
 
         # This handler open a connection to the cheshire cat for the user if it doesn't exist yet
         self.connect_to_ccat = MessageHandler(filters.ALL, self._open_ccat_connection)
+        # Using default group
         self.telegram.add_handler(self.connect_to_ccat)
 
         # Handlers to manage different types of messages after the connection to the cheshire cat is opened 
         # in the previous handler group
         self.text_message_handler =  MessageHandler(filters.TEXT & (~filters.COMMAND), self._text_handler)
+        self.photo_message_handler =  MessageHandler(filters.PHOTO & (~filters.COMMAND), self._photo_handler)
         self.voice_message_handler = MessageHandler(filters.VOICE & (~filters.COMMAND), self._voice_note_handler)
         self.document_message_handler = MessageHandler(filters.Document.ALL & (~filters.COMMAND), self._document_handler)
-
-        ### ADDING A COMMAND BUTTON TO BE CALLED clear_chat THROUGH SETTINGS IN BOTFATHER ###
-        # Command handlers
-        self.clear_chat_history_handler = CommandHandler("clear_chat", self._chat_history_handler)
+        self.clear_chat_history_handler = CommandHandler("clear_chat", self._clear_chat_history)
 
         self.telegram.add_handler(handler=self.document_message_handler, group=1)
         self.telegram.add_handler(handler=self.voice_message_handler, group=1)
         self.telegram.add_handler(handler=self.text_message_handler, group=1)
+        self.telegram.add_handler(handler=self.photo_message_handler, group=1)
         self.telegram.add_handler(handler=self.document_message_handler, group=1)
-
-        ### ADDING A COMMAND BUTTON TO BE CALLED clear_chat THROUGH SETTINGS IN BOTFATHER ###
         self.telegram.add_handler(handler=self.clear_chat_history_handler,group=1)
 
     async def run(self):
         # https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html#telegram.ext.Application.run_polling
         # Initializing and starting the app
+
+        await self.bot.set_my_commands(commands=[("/clear_chat", "Clear Cheshire Cat conversation history")])
+
         try:
             await self.telegram.initialize()
             await self.telegram.updater.start_polling(read_timeout=10)  
@@ -119,18 +120,49 @@ class Meowgram():
 
     async def _text_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
-        
-        # Send mesage to the cat
+
+        # Controlla se c'è una foto nel messaggio
+        if update.message.photo:
+            photo_id = update.message.photo[-1].file_id
+            photo_file = await self.bot.get_file(photo_id)
+            photo_path = photo_file.file_path
+        else:
+            photo_path = None
+
+        # Logging del percorso del file foto se presente
+        if photo_path:
+            logging.error(photo_path)
+        else:
+            logging.error("Nessuna foto presente nel messaggio.")
+
+        # Invia messaggio al cat
         self._connections[chat_id].send(
-            message=update.message.text, 
-            meowgram = {
+            message=update.message.text if update.message.text else "",
+            meowgram={
                 "update": update.to_json()
             },
+            image=photo_path
+        )
+
+    async def _photo_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat_id = update.effective_chat.id
+
+        photo_id = update.message.photo[-1].file_id
+        photo_file = await self.bot.get_file(photo_id)
+        photo_path = photo_file.file_path
+
+        # Invia messaggio al cat
+        self._connections[chat_id].send(
+            message=update.message.caption if update.message.caption else "",
+            meowgram={
+                "update": update.to_json()
+            },
+            image=photo_path
         )
 
     async def _voice_note_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
-        
+
         voice_message_file = await update.message.voice.get_file()
             
         # Send mesage to the cat
@@ -244,10 +276,7 @@ class Meowgram():
                 action=ChatAction.TYPING
             )
 
-    
-    ### TRYING TO ADD THE COMMAND BUTTON WIPE CHAT HISTORY ###
-
-    async def _chat_history_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def _clear_chat_history(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = update.effective_chat.id
 
         self._connections[user_id].ccat.memory.wipe_conversation_history(_headers={"user_id":user_id})
