@@ -107,8 +107,7 @@ class Meowgram():
             await self.telegram.shutdown()
             # Close open ws connections
             for connection in self._connections.values():
-                if connection.ccat is not None:
-                    connection.ccat.close()
+                await connection.disconnect()
 
     async def _open_ccat_connection(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = update.effective_chat.id
@@ -148,7 +147,8 @@ class Meowgram():
             logging.debug("No image in the message.")
 
         # Invia messaggio al cat
-        self._connections[chat_id].send(
+        logging.debug("Sending message to CheshireCat")
+        await self._connections[chat_id].send(
             message=update.message.text if update.message.text else "",
             meowgram={
                 "update": update.to_json()
@@ -164,7 +164,7 @@ class Meowgram():
         photo_path = photo_file.file_path
 
         # Invia messaggio al cat
-        self._connections[chat_id].send(
+        await self._connections[chat_id].send(
             message=update.message.caption if update.message.caption else "",
             meowgram={
                 "update": update.to_json()
@@ -178,7 +178,7 @@ class Meowgram():
         voice_message_file = await update.message.voice.get_file()
             
         # Send mesage to the cat
-        self._connections[chat_id].ccat.send(
+        await self._connections[chat_id].send(
             message="*[Voice Note]* (You can't hear)",
             meowgram_voice=voice_message_file.file_path,
             meowgram = {
@@ -326,7 +326,7 @@ class Meowgram():
         user_id = update.effective_chat.id
         message_id = update.message.message_id
 
-        self._connections[user_id].ccat.memory.wipe_conversation_history(_headers={"user_id":user_id})
+        self._connections[user_id].api.memory.wipe_conversation_history(_headers={"user_id":user_id})
 
         max_messages_to_delete = 100
         message_ids = []

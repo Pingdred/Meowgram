@@ -1,3 +1,4 @@
+websockets
 requests
 python-telegram-bot
 cheshire-cat-api
