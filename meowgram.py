@@ -7,10 +7,12 @@ import requests
 import tempfile
 import soundfile as sf
 
+from enum import Enum
 from typing import Dict
 
 import ffmpeg
-from telegram import Update, Bot
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest
 from telegram.ext import (
     Application, 
     ApplicationBuilder, 
@@ -23,6 +25,13 @@ from telegram.ext import (
 from telegram.constants import ChatAction
 
 from ccat_connection import CCatConnection
+
+# Conversational Form State
+class CatFormState(Enum):
+    INCOMPLETE = "incomplete"
+    COMPLETE = "complete"
+    WAIT_CONFIRM = "wait_confirm"
+    CLOSED = "closed"
 
 
 class Meowgram():
@@ -66,11 +75,14 @@ class Meowgram():
         self.telegram.add_handler(handler=self.document_message_handler, group=1)
         self.telegram.add_handler(handler=self.clear_chat_history_handler,group=1)
 
+        self.delete_reply_markup = MessageHandler(filters.ALL, self._delete_reply_markup)
+        self.telegram.add_handler(self.delete_reply_markup, group=3)
+
     async def run(self):
         # https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html#telegram.ext.Application.run_polling
         # Initializing and starting the app
 
-        await self.bot.set_my_commands(commands=[("/clear_chat", "Clear Cheshire Cat conversation history")])
+        await self.bot.set_my_commands(commands=[("/clear_chat", "Clear conversation history")])
 
         try:
             await self.telegram.initialize()
@@ -131,9 +143,9 @@ class Meowgram():
 
         # Logging del percorso del file foto se presente
         if photo_path:
-            logging.error(photo_path)
+            logging.debug(f"Image found in message: {photo_path}")
         else:
-            logging.error("Nessuna foto presente nel messaggio.")
+            logging.debug("No image in the message.")
 
         # Invia messaggio al cat
         self._connections[chat_id].send(
@@ -195,10 +207,41 @@ class Meowgram():
                 logging.error(f"An error occurred sending a telegram message: {e}")
 
     async def _dispatch_chat_message(self, message, user_id):
-        send_params = message.get("meowgram", {}).get("send_params", {})
-        settings = message.get("meowgram", {}).get("settings", {
+        meogram_params = message.get("meowgram", {})
+        send_params = meogram_params.get("send_params", {})
+        settings = meogram_params.get("settings", {
             "show_tts_text": False
         })
+
+        active_form = meogram_params.get("active_form", None)
+        reply_markup = None
+        if active_form:
+
+            form_state = active_form["state"]
+            keyboard = []
+
+            if form_state == CatFormState.WAIT_CONFIRM.value:
+                keyboard.append(
+                    [
+                        InlineKeyboardButton(
+                            "Confirm",
+                            callback_data=f"{active_form['name']}_{user_id}_confirm",
+                        )
+                    ]
+                )
+
+            if form_state != CatFormState.CLOSED.value:
+                keyboard.append(
+                    [
+                        InlineKeyboardButton(
+                            "Cancel",
+                            callback_data=f"{active_form['name']}_{user_id}_cancel",
+                        )
+                    ]
+                )
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
 
         tts_url = message.get("tts", None)
         if tts_url:
@@ -209,6 +252,7 @@ class Meowgram():
                 await self.bot.send_message(
                     chat_id=user_id,
                     text=message["content"], 
+                    reply_markup=reply_markup,
                     **send_params
                 )
                 return
@@ -231,6 +275,7 @@ class Meowgram():
                     duration=sf.info(speech_file_ogg_path).duration,
                     caption=message["content"] if settings["show_tts_text"] else None,
                     filename=speech_file_ogg_path,
+                    reply_markup=reply_markup,
                     **send_params
                 )
 
@@ -242,6 +287,7 @@ class Meowgram():
             await self.bot.send_message(
                 chat_id=user_id,
                 text=message["content"], 
+                reply_markup=reply_markup,
                 **send_params
             )
 
@@ -278,10 +324,30 @@ class Meowgram():
 
     async def _clear_chat_history(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = update.effective_chat.id
+        message_id = update.message.message_id
 
         self._connections[user_id].ccat.memory.wipe_conversation_history(_headers={"user_id":user_id})
 
-        await self.bot.send_message(
-            chat_id=user_id,
-            text="Deleted chat memory..."
-        )
+        max_messages_to_delete = 100
+        message_ids = []
+
+        # Collect IDs of messages to be deleted, up to max_messages_to_delete
+        for message_id in range(message_id, message_id - max_messages_to_delete, -1):
+            message_ids.append(message_id)
+
+       
+        await self.bot.delete_messages(user_id, message_ids)
+        
+    async def _delete_reply_markup(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        message_id = update.message.message_id - 1
+
+        try:
+            await self.bot.edit_message_reply_markup(
+                chat_id=update.effective_chat.id, 
+                message_id=message_id, 
+                reply_markup=None
+            )
+        except BadRequest as e:
+            logging.debug(f"[No reply markup to remove in previous message] {e.message}")
+        else:
+            logging.debug("Reply markup removed from previous message.")
