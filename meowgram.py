@@ -1,3 +1,4 @@
+import re
 import os
 import time
 import json
@@ -5,6 +6,7 @@ import asyncio
 import logging
 import requests
 import tempfile
+import functools
 import soundfile as sf
 
 from enum import Enum
@@ -15,7 +17,8 @@ from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest
 from telegram.ext import (
     Application, 
-    ApplicationBuilder, 
+    ApplicationBuilder,
+    CallbackQueryHandler, 
     ContextTypes, 
     MessageHandler, 
     ApplicationHandlerStop, 
@@ -67,7 +70,6 @@ class Meowgram():
         self.voice_message_handler = MessageHandler(filters.VOICE & (~filters.COMMAND), self._voice_note_handler)
         self.document_message_handler = MessageHandler(filters.Document.ALL & (~filters.COMMAND), self._document_handler)
         self.clear_chat_history_handler = CommandHandler("clear_chat", self._clear_chat_history)
-
         self.telegram.add_handler(handler=self.document_message_handler, group=1)
         self.telegram.add_handler(handler=self.voice_message_handler, group=1)
         self.telegram.add_handler(handler=self.text_message_handler, group=1)
@@ -77,6 +79,9 @@ class Meowgram():
 
         self.delete_reply_markup = MessageHandler(filters.ALL, self._delete_reply_markup)
         self.telegram.add_handler(self.delete_reply_markup, group=3)
+
+        self.form_inline_keyboard_handler = CallbackQueryHandler(self._form_handler)
+        self.telegram.add_handler(handler=self.form_inline_keyboard_handler)
 
     async def run(self):
         # https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html#telegram.ext.Application.run_polling
@@ -189,6 +194,31 @@ class Meowgram():
     async def _document_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         pass
 
+    async def _form_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat_id = update.effective_chat.id
+        query = update.callback_query
+        
+        pattern = r"^form_(?P<form_name>[a-zA-Z0-9_]+)_(?P<action>confirm|cancel)$"
+        match = re.match(pattern, query.data)
+
+        if match:
+
+            form_name = match.group('form_name')
+            action = match.group("action")
+
+            await self._connections[chat_id].send(
+                message=f"[{action}]",
+                meowgram={
+                    "update": update.to_json(),
+                    "form_action": {
+                        "form_name": form_name,
+                        "action": action
+                    }
+                },
+            )
+
+            await query.edit_message_reply_markup(reply_markup=None)
+        
     async def _out_queue_dispatcher(self):
         while True:
             message, user_id = await self._out_queue.get()
@@ -225,7 +255,7 @@ class Meowgram():
                     [
                         InlineKeyboardButton(
                             "Confirm",
-                            callback_data=f"{active_form['name']}_{user_id}_confirm",
+                            callback_data=f"form_{active_form['name']}_confirm",
                         )
                     ]
                 )
@@ -235,7 +265,7 @@ class Meowgram():
                     [
                         InlineKeyboardButton(
                             "Cancel",
-                            callback_data=f"{active_form['name']}_{user_id}_cancel",
+                            callback_data=f"form_{active_form['name']}_cancel",
                         )
                     ]
                 )
