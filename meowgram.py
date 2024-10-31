@@ -326,8 +326,12 @@ class Meowgram():
         user_id = update.effective_chat.id
         message_id = update.message.message_id
 
-        self._connections[user_id].api.memory.wipe_conversation_history(_headers={"user_id":user_id})
-
+        wipe_conversation = self._connections[user_id].api.memory.wipe_conversation_history
+        
+        await self._loop.run_in_executor(
+            executor= None,
+            func = functools.partial(wipe_conversation, _headers={"user_id": user_id})
+        )
         max_messages_to_delete = 100
         message_ids = []
 
