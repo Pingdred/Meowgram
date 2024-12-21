@@ -38,6 +38,15 @@ class CatFormState(Enum):
 
 
 class Meowgram():
+    """Telegram bot application that connects to the Cheshire Cat for a chatbot experience.
+    
+    Args:
+        telegram_token (str): The token of the Telegram bot.
+        ccat_url (str): The URL of the Cheshire Cat server. Default is "localhost".
+        ccat_port (int): The port of the Cheshire Cat server. Default is 1865.
+
+        
+    """
 
     def __init__(self, telegram_token: str, ccat_url: str = "localhost", ccat_port: int = 1865) -> None:
 
@@ -77,9 +86,11 @@ class Meowgram():
         self.telegram.add_handler(handler=self.document_message_handler, group=1)
         self.telegram.add_handler(handler=self.clear_chat_history_handler,group=1)
 
+        # Handler to delete the reply markup of the previous message
         self.delete_reply_markup = MessageHandler(filters.ALL, self._delete_reply_markup)
         self.telegram.add_handler(self.delete_reply_markup, group=3)
 
+        # Handler to manage the form inline keyboard        
         self.form_inline_keyboard_handler = CallbackQueryHandler(self._form_handler)
         self.telegram.add_handler(handler=self.form_inline_keyboard_handler)
 
@@ -87,6 +98,7 @@ class Meowgram():
         # https://docs.python-telegram-bot.org/en/stable/telegram.ext.application.html#telegram.ext.Application.run_polling
         # Initializing and starting the app
 
+        # Set the command to clear the chat history
         await self.bot.set_my_commands(commands=[("/clear_chat", "Clear conversation history")])
 
         try:
