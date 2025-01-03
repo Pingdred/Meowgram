@@ -1,8 +1,9 @@
-websockets
 requests
-python-telegram-bot
 cheshire-cat-api
 python-dotenv
 colorlog
 soundfile
 ffmpeg-python
+aiohttp
+telethon
+pillow
