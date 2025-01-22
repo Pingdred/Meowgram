@@ -50,7 +50,7 @@ async def message_handler(meowgram , event: NewMessage.Event):
     await cat_client.send_message(new_message)
 
 
-async def handle_media(event: NewMessage.Event, new_message: Dict[str, Any]) -> Dict[str, Any]:
+async def handle_media(event: NewMessage.Event, new_message: Dict[str, Any], cat_client: CheshireCatClient) -> Dict[str, Any]:
     """Handle different types of media messages from Telegram.
     
     Args:
@@ -94,6 +94,31 @@ async def handle_media(event: NewMessage.Event, new_message: Dict[str, Any]) -> 
             new_message["text"] = "*[Voice Note]*"
             media_bytes = await message.download_media(file=bytes)
             new_message["audio"] = await asyncio.to_thread(encode_voice, media_bytes)
+
+        # Handle document upload
+        case m if m.document:
+            message_mime_type = m.document.mime_type
+
+            new_message["text"] = "*[Document]*"
+
+            match message_mime_type:
+                case "application/pdf":
+                    mime_type = ".pdf"
+                case "text/plain":
+                    mime_type = ".txt"
+                case "text/markdown":
+                    mime_type = ".md"
+                case _:
+                    print("Unsupported MIME type:", mime_type)
+                    new_message["text"] += " (Mime type not supported)"
+                    raise TypeError("Unsupported MIME type:", mime_type)
+
+            file_name = m.document.attributes[0].file_name if m.document.attributes else "unknown.pdf"
+            media_bytes = await m.download_media(file=bytes)
+
+            with NamedTemporaryFile(suffix=mime_type) as tmp_file:
+                tmp_file.write(media_bytes)
+                await asyncio.to_thread(cat_client.api.rabbit_hole.upload_file, tmp_file.name)
 
         # Unsupported media types
         case m if m.video or m.video_note:
