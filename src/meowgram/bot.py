@@ -7,9 +7,9 @@ import tempfile
 import requests
 from typing import Dict
 
-from telethon import TelegramClient, Button, Message
+from telethon import TelegramClient, Button
 from telethon.events import NewMessage, CallbackQuery, StopPropagation
-from telethon.tl.types import BotCommand, BotCommandScopeDefault
+from telethon.tl.types import BotCommand, BotCommandScopeDefault, Message
 from telethon.tl.functions.bots import SetBotCommandsRequest
 from cheshire_cat.client import CheshireCatClient
 
