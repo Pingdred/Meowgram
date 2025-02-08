@@ -1,10 +1,13 @@
-import asyncio
-import functools
+
 import os
 import io
+import re
 import ffmpeg
 import base64
 import logging
+import asyncio
+import functools
+
 from PIL import Image
 from enum import Enum
 
@@ -92,6 +95,23 @@ def build_base_cat_message(event: NewMessage.Event | CallbackQuery.Event) -> dic
     }
 
     return new_message
+
+
+def clean_code_blocks(text):
+    """
+    Removes language specification from markdown code blocks for Telegram.
+    Converts ```python\n to ```\n to prevent Telegram from showing the language twice.
+    
+    Args:
+        text (str): The markdown text containing code blocks
+        
+    Returns:
+        str: Cleaned text with language specifications removed
+    """        
+
+    pattern = r'```([a-zA-Z0-9_]+)\n'
+    
+    return re.sub(pattern, '```\n', text)
 
 
 async def clear_chat_history(meowgram, event: NewMessage.Event) -> bool:

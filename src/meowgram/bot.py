@@ -1,4 +1,3 @@
-import re
 import os
 import time
 import logging
@@ -13,9 +12,11 @@ from telethon.tl.functions.bots import SetBotCommandsRequest
 from cheshire_cat.client import CheshireCatClient
 
 from meowgram.handlers import command_handler, message_handler, form_action_handler
-from utils import audio_to_voice, CatFormState
+from utils import audio_to_voice, CatFormState, clean_code_blocks
 
 class MeowgramBot:
+
+    # SECTION: Bot initialization
 
     def __init__(
         self, api_id: str, api_hash: str, bot_token: str, cat_url: str, cat_port: int
@@ -62,6 +63,7 @@ class MeowgramBot:
         ]
         await self.client(SetBotCommandsRequest(scope=BotCommandScopeDefault() ,lang_code='', commands=commands))
 
+    # SECTION: Bot lifecycle
 
     async def run(self):
         """Start bot with unified message handler"""        
@@ -90,7 +92,8 @@ class MeowgramBot:
         self.logger.info("Closing Cheshire Cat connections")
         for _, cat_client in self.cat_connections.items():
             await cat_client.disconnect()
-            
+    
+    # SECTION: Cheshire Cat connection management
 
     async def ensure_cat_connection(self, user_id: int) -> CheshireCatClient | None:
         """
@@ -121,6 +124,8 @@ class MeowgramBot:
                 return None
                 
         return self.cat_connections[user_id]
+
+    # SECTION: Incoming Cheshire Cat message handling
 
     async def dispatch_cat_message(self, user_id: int, message: dict):
         """
@@ -196,7 +201,7 @@ class MeowgramBot:
                     return
                 
         # Remove language specification from code blocks
-        text = self.clean_code_blocks(message["text"])
+        text = clean_code_blocks(message["text"])
 
         # Send regular message
         await self.client.send_message(
@@ -230,23 +235,3 @@ class MeowgramBot:
         """
         async with self.client.action(user_id, action, delay=seconds):
             await asyncio.sleep(seconds)
-
-    @staticmethod
-    def clean_code_blocks(text):
-        """
-        Removes language specification from markdown code blocks for Telegram.
-        Converts ```python\n to ```\n to prevent Telegram from showing the language twice.
-        
-        Args:
-            text (str): The markdown text containing code blocks
-            
-        Returns:
-            str: Cleaned text with language specifications removed
-        """        
-        # Pattern più preciso che:
-        # - inizia con tre backtick (```)
-        # - seguito da una o più lettere/numeri/underscore per il nome del linguaggio
-        # - seguito da una nuova riga (\n)
-        pattern = r'```([a-zA-Z0-9_]+)\n'
-        
-        return re.sub(pattern, '```\n', text)
