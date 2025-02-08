@@ -5,7 +5,7 @@ import asyncio
 from colorlog import ColoredFormatter
 from dotenv import load_dotenv
 
-from telegram.bot import MeowgramBot
+from meowgram.bot import MeowgramBot
 
 def setup_logging(log_level: str = "INFO") -> logging.Logger:
     # Create a colored formatter
