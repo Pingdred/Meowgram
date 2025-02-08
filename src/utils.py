@@ -84,6 +84,16 @@ def build_update(event: NewMessage.Event | CallbackQuery.Event) -> dict:
     return update
 
 
+def build_base_cat_message(event: NewMessage.Event | CallbackQuery.Event) -> dict:
+    new_message = {
+        "meowgram": {
+            "update": build_update(event)
+        }
+    }
+
+    return new_message
+
+
 async def clear_chat_history(meowgram, event: NewMessage.Event) -> bool:
     logger = logging.getLogger("meowgram")
 
@@ -109,6 +119,6 @@ async def clear_chat_history(meowgram, event: NewMessage.Event) -> bool:
         try:
             await event.client.delete_messages(user_id, message_ids)
             start -= batch_size
-        except Exception:
-            #logger.error(f"Error deleting messages: {type(e)} - {e}")
+        except Exception as e:
+            logger.error(f"Error deleting messages: {type(e)} - {e}")
             break
