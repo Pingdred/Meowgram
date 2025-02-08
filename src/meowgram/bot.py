@@ -29,7 +29,7 @@ class MeowgramBot:
         self.cat_connections: Dict[int, CheshireCatClient] = {}
         self.last_typing_action = {}
         
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(__name__)
 
     def set_telegram_handlers(self):
         """Setup event handlers"""
@@ -97,7 +97,7 @@ class MeowgramBot:
         Ensures there is an active connection to Cheshire Cat for the user.
         If not, creates a new one.
         """
-        
+
         # Create a new connection if one does not exist
         if user_id not in self.cat_connections:
             cat_client = CheshireCatClient(
@@ -106,25 +106,19 @@ class MeowgramBot:
                 user_id,
                 lambda msg: self.dispatch_cat_message(user_id, msg)
             )
-
             # Store the connection in the dictionary
             self.cat_connections[user_id] = cat_client   
-        else:
-            # Get the existing connection
-            cat_client = self.cat_connections[user_id] 
-            
+      
+        # Get the existing connection
+        cat_client = self.cat_connections[user_id] 
+        
         # Open a new connection if the WebSocket is closed
         if cat_client.ws is None or cat_client.ws.closed:
-            # Connect the client to Cheshire Cat
-            connected = await cat_client.connect(str(user_id))
 
-            if not connected:
+            if not (await cat_client.connect()):
                 self.logger.error(f"Failed to connect to Cheshire Cat for user {user_id}")
                 await self.client.send_message(user_id, "Failed to connect to Cheshire Cat. Please try again later.")
                 return None
-            
-            # Start the listening loop for messages
-            asyncio.create_task(cat_client.listen())
                 
         return self.cat_connections[user_id]
 

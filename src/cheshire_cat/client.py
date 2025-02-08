@@ -1,6 +1,8 @@
-from aiohttp import ClientWebSocketResponse, ClientSession
 import json
+import asyncio
 import logging
+
+from aiohttp import ClientWebSocketResponse, ClientSession
 from typing import Optional, Callable
 
 from cheshire_cat_api import CatClient, Config
@@ -11,7 +13,9 @@ class CheshireCatClient:
     Gestisce la connessione WebSocket e l'invio/ricezione dei messaggi.
     """
     def __init__(self, base_url: str, port: int, user_id: str, message_callback: Callable):
-        self.ws_url = f"ws://{base_url}:{port}/ws"
+        self.user_id = user_id
+
+        self.ws_url = f"ws://{base_url}:{port}/ws/{user_id}"
         self.session: Optional[ClientSession] = None
         self.ws: Optional[ClientWebSocketResponse] = None
         # Callback che verrà chiamata quando arriva un messaggio
@@ -27,11 +31,13 @@ class CheshireCatClient:
         self.api = CatClient(
             config=conf
         )
+
+        self.listener_task = None
         
         # Setup logging base
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(__name__)
 
-    async def connect(self, user_id: str) -> bool:
+    async def connect(self) -> bool:
         """
         Stabilisce la connessione WebSocket con Cheshire Cat.
         Crea una nuova sessione se non esiste già.
@@ -40,14 +46,17 @@ class CheshireCatClient:
             self.session = ClientSession()
             
         try:
-            self.ws = await self.session.ws_connect(f"{self.ws_url}/{user_id}")
-            self.logger.info(f"Connesso a Cheshire Cat per l'utente {user_id}")
+            self.ws = await self.session.ws_connect(f"{self.ws_url}")
+            self.logger.info(f"Connesso a Cheshire Cat per l'utente {self.user_id}")
+
+            self.listener_task = asyncio.create_task(self.__listen())
+
             return True
         except Exception as e:
             self.logger.error(f"Errore nella connessione: {e}")
             return False
 
-    async def listen(self):
+    async def __listen(self):
         """
         Ascolta i messaggi in arrivo dal WebSocket.
         Quando arriva un messaggio, chiama la callback registrata.
