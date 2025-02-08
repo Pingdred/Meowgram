@@ -12,7 +12,7 @@ from telethon.tl.types import BotCommand, BotCommandScopeDefault
 from telethon.tl.functions.bots import SetBotCommandsRequest
 from cheshire_cat.client import CheshireCatClient
 
-from telegram.handlers import command_handler, message_handler, form_action_handler
+from meowgram.handlers import command_handler, message_handler, form_action_handler
 from utils import audio_to_voice, CatFormState
 
 class MeowgramBot:
@@ -100,9 +100,10 @@ class MeowgramBot:
         
         # Create a new connection if one does not exist
         if user_id not in self.cat_connections:
-            cat_client = CheshireCatClient(self.cat_url, self.cat_port, user_id)
-            # Register the callback to handle responses
-            cat_client.set_message_handler(
+            cat_client = CheshireCatClient(
+                self.cat_url,
+                self.cat_port,
+                user_id,
                 lambda msg: self.dispatch_cat_message(user_id, msg)
             )
 
@@ -119,7 +120,7 @@ class MeowgramBot:
 
             if not connected:
                 self.logger.error(f"Failed to connect to Cheshire Cat for user {user_id}")
-                self.client.send_message(user_id, "Failed to connect to Cheshire Cat. Please try again later.")
+                await self.client.send_message(user_id, "Failed to connect to Cheshire Cat. Please try again later.")
                 return None
             
             # Start the listening loop for messages
@@ -147,7 +148,7 @@ class MeowgramBot:
                 await self.handle_chat_token(user_id)
             case "error":
                 self.logger.error(f"Error message received from Cheshire Cat: {message}")
-                self.client.send_message(user_id, f"An error occurred while processing your request: {message}")
+                await self.client.send_message(user_id, f"An error occurred while processing your request: {message}")
             case "notification":
                 pass           
         
