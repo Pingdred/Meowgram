@@ -95,36 +95,22 @@ class MeowgramBot:
         if not message.media:
             base_msg = build_base_cat_message(event)
             base_msg["text"] = message.text
+
             await cat_client.send_message(base_msg)
             return
 
-        # Define the handlers for different media types in order of priority.
-        handlers = [
-            handle_unsupported_media,
-            handle_chat_media,
-        ]
-
-        # Iterate through the handlers and return the first non-None result.
-        for handler in handlers:
-            result = await handler(event)
-
-            # Skip to the next handler if the result is None.
-            if result is None:
-                continue
-            
+        if msg := await handle_unsupported_media(event) or await handle_chat_media(event):
             # Add the caption associated with the media if present.
             if message.text:
-                result["text"] = message.text
-            await cat_client.send_message(result)
+                msg["text"] = message.text
 
-            # Stop processing the message after sending the media
+            await cat_client.send_message(msg)
             return
 
         # Send every other media down the Rabbit Hole
+        # document is checked last as it's the most generic media type
         if message.document:
-            # if message.text:
-            #     await message.reply("I'm reading the document, please wait a moment.")
-
+            # TODO: Handle caption for document
             await handle_file(event, cat_client)
 
     async def form_action_handler(self, event: CallbackQuery.Event):
