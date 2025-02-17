@@ -59,30 +59,50 @@ class MeowgramBot:
 
         Note:
             This is the hierarchy of the message media types:
-
-            Message
-            ├── text                                    Text content of the message (can contain only text or a caption)
-            └── media                                   Media content attached to the message (if present)
-                ├── photo                               Image sent as a photo
-                ├── document                            Generic file content with extended attributes (can include various file types)
-                │   ├── video                           Video content with thumbnail and duration
-                │   │   └── video_note                  Round video message (usually 640x640)
-                │   ├── audio                           Audio file with metadata (title, performer)
-                │   │   └── voice                       Voice message recording
-                │   ├── sticker                         Image or animation sticker
-                │   │   ├── image/webp                  Image sticker (WebP format)
-                │   │   ├── video/webm                  Video sticker (WebM format)
-                │   │   └── application/x-tgsticker     Animated sticker (TGSticker format)
-                │   ├── gif                             Animated image (GIF)
-                ├── contact                             Shared contact information
-                ├── geo                                 Geographic coordinates (latitude and longitude)
-                │   └── venue                           Location with title and address
-                ├── poll                                Interactive poll
-                ├── web_preview                         Webpage preview (link preview)
-                ├── game                                Telegram game (interactive game)
-                ├── invoice                             Payment invoice (Telegram Payments)
-                └── dice                                Animated emoji/dice (used for sending dynamic emojis or dice)
         """
+
+        #  Message
+        #     ├── text                                    Text content of the message (can contain only text or a caption)
+        #     └── media                                   Media content attached to the message (if present)
+        #         ├── photo                               Image sent as a photo
+        #         ├── document                            Generic file content with extended attributes (can include various file types)
+        #         │   ├── video                           Video content with thumbnail and duration
+        #         │   │   └── video_note                  Round video message (usually 640x640)
+        #         │   ├── audio                           Audio file with metadata (title, performer)
+        #         │   │   └── voice                       Voice message recording
+        #         │   ├── sticker                         Image or animation sticker
+        #         │   │   ├── image/webp                  Image sticker (WebP format)
+        #         │   │   ├── video/webm                  Video sticker (WebM format)
+        #         │   │   └── application/x-tgsticker     Animated sticker (TGSticker format)
+        #         │   ├── gif                             Animated image (GIF)
+        #         │   │── file                            Generic file pdf, txt, etc.
+        #         ├── contact                             Shared contact information
+        #         ├── geo                                 Geographic coordinates (latitude and longitude)
+        #         │   └── venue                           Location with title and address
+        #         ├── poll                                Interactive poll
+        #         ├── web_preview                         Webpage preview (link preview)
+        #         ├── game                                Telegram game (interactive game)
+        #         ├── invoice                             Payment invoice (Telegram Payments)
+        #         └── dice                                Animated emoji/dice (used for sending dynamic emojis or dice)
+
+
+        # 1. Check for unsupported media types that currenty are: 
+        #   - GIFs, 
+        #   - video/video_note, 
+        #   - polls,
+        #   - contacts, 
+        #   - geo/venues,
+        #   - video/animated stickers
+        #
+        # 2. Check for media types that can be sent in a chat: 
+        #   - photos, 
+        #   - voice note,
+        #   - image stickers
+        #
+        # 3. Send the document to the Rabbit Hole to ingest it 
+        #    the affected document types are:
+        #   - audio files, (not voice notes)
+        #   - generic files,
 
         user_id = event.sender_id
         cat_client: CheshireCatClient = await self.ensure_cat_connection(user_id)

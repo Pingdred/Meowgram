@@ -12,6 +12,32 @@ from telethon.events import NewMessage
 from cheshire_cat.client import CheshireCatClient
 from utils import build_base_cat_message, encode_image, encode_voice
 
+# Hierarchy of the message media types:
+#
+# Message
+# ├── text                                    Text content of the message (can contain only text or a caption)
+# └── media                                   Media content attached to the message (if present)
+#     ├── photo                               Image sent as a photo
+#     ├── document                            Generic file content with extended attributes (can include various file types)
+#     │   ├── video                           Video content with thumbnail and duration
+#     │   │   └── video_note                  Round video message (usually 640x640)
+#     │   ├── audio                           Audio file with metadata (title, performer)
+#     │   │   └── voice                       Voice message recording
+#     │   ├── sticker                         Image or animation sticker
+#     │   │   ├── image/webp                  Image sticker (WebP format)
+#     │   │   ├── video/webm                  Video sticker (WebM format)
+#     │   │   └── application/x-tgsticker     Animated sticker (TGSticker format)
+#     │   ├── gif                             Animated image (GIF)
+#     │   │── file                            Generic file pdf, txt, etc.
+#     ├── contact                             Shared contact information
+#     ├── geo                                 Geographic coordinates (latitude and longitude)
+#     │   └── venue                           Location with title and address
+#     ├── poll                                Interactive poll
+#     ├── web_preview                         Webpage preview (link preview)
+#     ├── game                                Telegram game (interactive game)
+#     ├── invoice                             Payment invoice (Telegram Payments)
+#     └── dice                                Animated emoji/dice (used for sending dynamic emojis or dice)
+
 
 async def handle_unsupported_media(event: NewMessage.Event) -> Optional[Dict[str, Any]]:
     """
@@ -37,17 +63,22 @@ async def handle_unsupported_media(event: NewMessage.Event) -> Optional[Dict[str
 
     # Check for unsupported message types
     for attr, text in unsupported_texts.items():
+
+        # Set the mapped text if thre is an unsupported media type
         if getattr(message, attr, None):
             base_msg["text"] = text
             return base_msg
 
-    # Handle special unsupported sticker types
+    # Check manually for unsupported stickers types
     if message.sticker:
         mime = message.sticker.mime_type
+
         sticker_map = {
             "video/webm": "*[Video Sticker]* (Not supported)",
             "application/x-tgsticker": "*[Animated Sticker]* (Not supported)",
         }
+
+        # Set the mapped text if there is an unsupported sticker type
         if mime in sticker_map:
             base_msg["text"] = sticker_map[mime]
             return base_msg
@@ -68,13 +99,16 @@ async def handle_chat_media(event: NewMessage.Event) -> Optional[Dict[str, Any]]
     """
     message: Message = event.message
     
-    # If the media cannot be sent as a chat message skip it
+    # If the media cannot be sent as a chat message skip this handler
     if not any((message.photo, message.sticker, message.voice)):
         return None
 
     base_msg = build_base_cat_message(event)
 
     media_bytes = await message.download_media(file=bytes)
+
+    # In case of an error while downloading the file,
+    # inform the user and return
     if media_bytes is None:
         base_msg["text"] = "*[Error downloading, suggest user resubmit file]*"
         return base_msg
@@ -84,8 +118,8 @@ async def handle_chat_media(event: NewMessage.Event) -> Optional[Dict[str, Any]]
         base_msg["text"] = "*[Image]*"
         return base_msg
 
-    # Check if the sticker is an image, 
-    # even if the check for unsupported media types already passed. 
+    # Check for video or animated stickers was already done in handle_unsupported_media
+    # but to be sure we check again here if the sticker is an image
     if message.sticker and message.sticker.mime_type == "image/webp": 
         # The file attribute offer an easy way to access the attributes of a sticker
         emoji = message.file.emoji
@@ -99,7 +133,7 @@ async def handle_chat_media(event: NewMessage.Event) -> Optional[Dict[str, Any]]
         return base_msg
 
 
-async def handle_file(event: NewMessage.Event, cat_client: CheshireCatClient):
+async def handle_file(event: NewMessage.Event, cat_client: CheshireCatClient) -> None:
     """
     Handle generic file uploads to the Cheshire Cat.
 
@@ -113,7 +147,9 @@ async def handle_file(event: NewMessage.Event, cat_client: CheshireCatClient):
 
     # Get the allowed mime types from the Cheshire Cat
     allowed_mime_types = (await asyncio.to_thread(cat_client.api.rabbit_hole.get_allowed_mimetypes))["allowed"]
-    # Check if the file type is allowed
+
+    # In case of an unsupported file type, 
+    # inform the user and return
     if doc_mime not in allowed_mime_types:
         # Get the extensions from the allowed mime types
         exts_from_mimes = [mimetypes.guess_extension(mime, strict=False) or mime for mime in allowed_mime_types]
@@ -126,6 +162,9 @@ async def handle_file(event: NewMessage.Event, cat_client: CheshireCatClient):
         return
     
     media_bytes = await message.download_media(file=bytes)
+
+    # In case of an error while downloading the file, 
+    # inform the user and return
     if media_bytes is None:
         await message.reply( 
             "A problem occurred while downloading the file from Telegram. Please try again."
@@ -136,15 +175,18 @@ async def handle_file(event: NewMessage.Event, cat_client: CheshireCatClient):
     file_name = message.file.name
 
     def write_file(file_path: str, media_bytes: bytes):
+        """
+            Utility function to write the media bytes to a file on disk.
+            Needed to run it in a separate thread using asyncio.to_thread.
+        """
         with open(file_path, 'wb') as f:
             f.write(media_bytes)
             # Ensure the file is written to disk
             f.flush()
 
-    # Create a temporary directory
     temp_dir = mkdtemp()
     try:
-        # Create the full path for the file
+        # Get the full path where the file will be temporarily stored
         file_path = os.path.join(temp_dir, file_name)
 
         # Write the file to disk in a separate thread
@@ -156,5 +198,8 @@ async def handle_file(event: NewMessage.Event, cat_client: CheshireCatClient):
     
     finally:
         # Remove the entire temporary directory and its contents
+        # ingore_errors=True prevents the function to block the
+        # event loop in case of errors, so there is no need to run
+        # it in a separate thread
         shutil.rmtree(temp_dir, ignore_errors=True)
 
