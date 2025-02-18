@@ -5,7 +5,10 @@ import logging
 import asyncio
 import tempfile
 import requests
-from typing import Dict
+
+from enum import Enum
+from dataclasses import dataclass
+from typing import Dict, Set
 
 from telethon import TelegramClient, Button
 from telethon.events import NewMessage, CallbackQuery, StopPropagation
@@ -15,6 +18,44 @@ from cheshire_cat.client import CheshireCatClient
 
 from meowgram.madia_handlers import handle_unsupported_media, handle_chat_media, handle_file
 from utils import audio_to_voice, CatFormState, clean_code_blocks, clear_chat_history, build_base_cat_message
+
+
+class AccessType(Enum):
+    ALL = "all"
+    WHITELIST = "whitelist"
+    BLACKLIST = "blacklist"
+    #CCAT_AUTH = 3
+
+
+@dataclass
+class AccessControl:
+    access_type: AccessType
+    users: Set[int]
+
+    def __post_init__(self):
+        try:
+            ac_type = AccessType(self.access_type)
+            self.access_type = ac_type
+        except ValueError:
+            self.access_type = AccessType.ALL
+            logging.error(f"Invalid access type: {self.access_type}, defaulting to {AccessType.ALL}")
+
+    def is_user_allowed(self, user_id: int) -> bool:
+
+        logging.debug(f"Checking user {user_id} against {self.access_type}")
+        logging.debug(f"Users: {self.users}")
+
+        if self.access_type == AccessType.ALL:
+            return True
+
+        if self.access_type == AccessType.WHITELIST:
+            return user_id in self.users
+
+        if self.access_type == AccessType.BLACKLIST:
+            return user_id not in self.users
+
+        return False
+
 
 class MeowgramBot:
 
@@ -29,10 +70,23 @@ class MeowgramBot:
         self.cat_port = cat_port
         self.cat_connections: Dict[int, CheshireCatClient] = {}
         self.last_typing_action = {}
-        
+
+        self.access_control = AccessControl(
+            access_type=os.getenv("ACCESS_TYPE", "all"),
+            users=[int(id) for id in os.getenv("ACCESS_LIST", "").split(",")],
+        )
+
         self.logger = logging.getLogger(__name__)
 
     # SECTION: Telegram event handlers
+    
+    async def access_handler(self, event):
+        if event.sender.bot:
+            raise StopPropagation
+            
+        if not self.access_control.is_user_allowed(event.sender_id):
+            await event.reply("You are not allowed to use this bot.")
+            raise StopPropagation          
 
     async def command_handler(self, event: CallbackQuery.Event):
         """Handle commands"""
@@ -171,6 +225,12 @@ class MeowgramBot:
 
     def set_telegram_handlers(self):
         """Setup event handlers"""
+
+        # Handler for access control
+        self.client.add_event_handler(
+            self.access_handler,
+            NewMessage
+        )
 
         # Handler for commands
         self.client.add_event_handler(
