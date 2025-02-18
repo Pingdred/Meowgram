@@ -45,10 +45,17 @@ class CheshireCatClient:
             if msg.type == 1:  # TYPE_TEXT
                 try:
                     data = json.loads(msg.data)
+
+                    self.logger.debug("Recived Chehsire Cat message:")
+                    logging.debug(json.dumps(data, indent=4))
+
                     if self.message_callback:
                         await self.message_callback(data)
                 except json.JSONDecodeError:
                     self.logger.error("Ricevuto messaggio JSON non valido")
+                except Exception as e:
+                    self.logger.error(f"Errore nella gestione del messaggio: {e}")
+                    self.logger.error(f"Message: {msg.data}")
 
     async def connect(self) -> bool:
         """

@@ -194,7 +194,7 @@ async def handle_file(event: NewMessage.Event, cat_client: CheshireCatClient) ->
         await asyncio.to_thread(write_file, file_path, media_bytes)
         
         # Upload the file to the Cheshire Cat
-        await asyncio.to_thread(cat_client.api.rabbit_hole.upload_file, file_path)
+        await asyncio.to_thread(cat_client.api.rabbit_hole.upload_file, file_path, _headers={"user_id": event.sender_id})
     
     finally:
         # Remove the entire temporary directory and its contents

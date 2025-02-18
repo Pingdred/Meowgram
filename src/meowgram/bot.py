@@ -287,7 +287,7 @@ class MeowgramBot:
             case "notification":
                 pass           
         
-    async def handle_chat_message(self, user_id: int, message: str):
+    async def handle_chat_message(self, user_id: int, message: dict):
         # Extract Meowgram-specific parameters if present
         meowgram_params = message.get("meowgram", {})
         send_params = meowgram_params.get("send_params", {})
@@ -336,7 +336,11 @@ class MeowgramBot:
                     os.remove(tmp.name)
                     return
                 
+        if not message.get("text"):
+            return
+        
         # Remove language specification from code blocks
+        # to prevent Telegram from showing the language twice
         text = clean_code_blocks(message["text"])
 
         # Send regular message
