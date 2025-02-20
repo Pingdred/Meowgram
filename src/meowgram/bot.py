@@ -19,7 +19,14 @@ from telethon.tl.functions.bots import SetBotCommandsRequest
 from cheshire_cat.client import CheshireCatClient
 
 from meowgram.madia_handlers import handle_unsupported_media, handle_chat_media, handle_file
-from utils import audio_to_voice, CatFormState, clean_code_blocks, clear_chat_history, build_base_cat_message
+from utils import (
+    audio_to_voice,
+    CatFormState,
+    clean_code_blocks,
+    clear_chat_history,
+    UserMessage,
+    MeowgramPayload
+)
 
 
 class AccessType(Enum):
@@ -176,18 +183,20 @@ class MeowgramBot:
 
         # If no media is present, send the text message directly.
         if not message.media:
-            base_msg = build_base_cat_message(event)
-            base_msg["text"] = message.text
+            new_message = UserMessage(
+                text=message.text,
+                meowgram=MeowgramPayload.build_new_message(event)
+            )
 
-            await cat_client.send_message(base_msg)
+            await cat_client.send_message(new_message)
             return
 
-        if msg := await handle_unsupported_media(event) or await handle_chat_media(event):
+        if user_message := await handle_unsupported_media(event) or await handle_chat_media(event):
             # Add the caption associated with the media if present.
             if message.text:
-                msg["text"] = message.text
+               user_message.text = message.text
 
-            await cat_client.send_message(msg)
+            await cat_client.send_message(user_message)
             return
 
         # Send every other media down the Rabbit Hole
@@ -211,22 +220,16 @@ class MeowgramBot:
 
         if not match:
             return
-
-
-        form_name = match.group('form_name')
+        
+        form_name = match.group("form_name")
         action = match.group("action")
 
-        message = build_base_cat_message(event)
-        message["text"] = action
+        user_message = UserMessage(
+            text=action,
+            meowgram=MeowgramPayload.build_form_action(form_name, action)
+        )
 
-        form_action = {
-            "form_name": form_name,
-            "action": action #{}, # No information are needed for form actions
-        }
-        message["form_action"] = form_action
-
-        await cat_client.send_message(message)
-
+        await cat_client.send_message(user_message)
         await event.edit(buttons=None)
 
 

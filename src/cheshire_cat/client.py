@@ -5,6 +5,8 @@ import logging
 from aiohttp import ClientWebSocketResponse, ClientSession
 from typing import Optional, Callable
 
+from pydantic import BaseModel
+
 from cheshire_cat_api import CatClient, Config
 
 class CheshireCatClient:
@@ -75,12 +77,16 @@ class CheshireCatClient:
             self.logger.error(f"Errore nella connessione: {e}")
             return False
 
-    async def send_message(self, message: dict):
+    async def send_message(self, message: dict | BaseModel) -> bool:
         if not self.ws:
             self.logger.error("WebSocket non connesso")
             return False
             
         try:
+
+            if isinstance(message, BaseModel):
+                message = message.model_dump(mode="json")
+
             await self.ws.send_json(message)
             return True
         except Exception as e:

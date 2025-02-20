@@ -10,6 +10,7 @@ import functools
 
 from PIL import Image
 from enum import Enum
+from pydantic import BaseModel, computed_field
 
 from telethon.events import NewMessage, CallbackQuery
 
@@ -20,6 +21,58 @@ class CatFormState(Enum):
     WAIT_CONFIRM = "wait_confirm"
     CLOSED = "closed"
 
+
+
+class PayloadType(Enum):
+    FORM_ACTION = "form_action"
+    NEW_MESSAGE = "new_message"
+    USER_ACTION = "user_action" 
+
+
+class NewMessageData(BaseModel):
+    update: dict
+    
+
+class FormActionData(BaseModel):
+    form_name: str
+    action: str
+
+
+class MeowgramPayload(BaseModel):
+    data: FormActionData | NewMessageData
+
+    @computed_field
+    def type(self) -> PayloadType:
+        if isinstance(self.data, FormActionData):
+            return PayloadType.FORM_ACTION
+        
+        if isinstance(self.data, NewMessageData):
+            return PayloadType.NEW_MESSAGE
+    
+
+    @classmethod
+    def build_form_action(cls, form_name: str, action: str) -> "MeowgramPayload":
+        return cls(
+            data=FormActionData(
+                form_name=form_name,
+                action=action
+            )
+        )
+
+
+    @classmethod
+    def build_new_message(cls, event:  NewMessage.Event | CallbackQuery.Event) -> "MeowgramPayload":
+        return cls(
+            data=NewMessageData(
+                update=build_update(event)
+            )
+        )
+
+class UserMessage(BaseModel):
+    text: str | None = None
+    audio: str | None = None
+    image: str | None = None
+    meowgram: MeowgramPayload
 
 def audio_to_voice(input_path: str) -> str:
     """Convert audio to Telegram voice format"""

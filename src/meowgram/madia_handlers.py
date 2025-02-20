@@ -10,36 +10,37 @@ from telethon.tl.types import Message
 from telethon.events import NewMessage
 
 from cheshire_cat.client import CheshireCatClient
-from utils import build_base_cat_message, encode_image, encode_voice
+from utils import encode_image, encode_voice, UserMessage, MeowgramPayload
 
-# Hierarchy of the message media types:
-#
-# Message
-# ├── text                                    Text content of the message (can contain only text or a caption)
-# └── media                                   Media content attached to the message (if present)
-#     ├── photo                               Image sent as a photo
-#     ├── document                            Generic file content with extended attributes (can include various file types)
-#     │   ├── video                           Video content with thumbnail and duration
-#     │   │   └── video_note                  Round video message (usually 640x640)
-#     │   ├── audio                           Audio file with metadata (title, performer)
-#     │   │   └── voice                       Voice message recording
-#     │   ├── sticker                         Image or animation sticker
-#     │   │   ├── image/webp                  Image sticker (WebP format)
-#     │   │   ├── video/webm                  Video sticker (WebM format)
-#     │   │   └── application/x-tgsticker     Animated sticker (TGSticker format)
-#     │   ├── gif                             Animated image (GIF)
-#     │   │── file                            Generic file pdf, txt, etc.
-#     ├── contact                             Shared contact information
-#     ├── geo                                 Geographic coordinates (latitude and longitude)
-#     │   └── venue                           Location with title and address
-#     ├── poll                                Interactive poll
-#     ├── web_preview                         Webpage preview (link preview)
-#     ├── game                                Telegram game (interactive game)
-#     ├── invoice                             Payment invoice (Telegram Payments)
-#     └── dice                                Animated emoji/dice (used for sending dynamic emojis or dice)
+"""
+Hierarchy of the message media types:
 
+Message
+├── text                                    Text content of the message (can contain only text or a caption)
+└── media                                   Media content attached to the message (if present)
+    ├── photo                               Image sent as a photo
+    ├── document                            Generic file content with extended attributes (can include various file types)
+    │   ├── video                           Video content with thumbnail and duration
+    │   │   └── video_note                  Round video message (usually 640x640)
+    │   ├── audio                           Audio file with metadata (title, performer)
+    │   │   └── voice                       Voice message recording
+    │   ├── sticker                         Image or animation sticker
+    │   │   ├── image/webp                  Image sticker (WebP format)
+    │   │   ├── video/webm                  Video sticker (WebM format)
+    │   │   └── application/x-tgsticker     Animated sticker (TGSticker format)
+    │   ├── gif                             Animated image (GIF)
+    │   │── file                            Generic file pdf, txt, etc.
+    ├── contact                             Shared contact information
+    ├── geo                                 Geographic coordinates (latitude and longitude)
+    │   └── venue                           Location with title and address
+    ├── poll                                Interactive poll
+    ├── web_preview                         Webpage preview (link preview)
+    ├── game                                Telegram game (interactive game)
+    ├── invoice                             Payment invoice (Telegram Payments)
+    └── dice                                Animated emoji/dice (used for sending dynamic emojis or dice)
+"""
 
-async def handle_unsupported_media(event: NewMessage.Event) -> Optional[Dict[str, Any]]:
+async def handle_unsupported_media(event: NewMessage.Event) -> Optional[UserMessage]:
     """
     Handle unsupported media types. This includes GIFs, video notes, polls, contacts, locations, and venues.
 
@@ -51,7 +52,9 @@ async def handle_unsupported_media(event: NewMessage.Event) -> Optional[Dict[str
         or None otherwise.
     """
     message: Message = event.message
-    base_msg = build_base_cat_message(event)
+    user_massage = UserMessage(
+        meowgram=MeowgramPayload.build_new_message(event),
+    )
 
     unsupported_texts = {
         "gif": "*[GIF]* (Not supported)",
@@ -66,8 +69,8 @@ async def handle_unsupported_media(event: NewMessage.Event) -> Optional[Dict[str
 
         # Set the mapped text if thre is an unsupported media type
         if getattr(message, attr, None):
-            base_msg["text"] = text
-            return base_msg
+            user_massage.text = text
+            return user_massage
 
     # Check manually for unsupported stickers types
     if message.sticker:
@@ -80,8 +83,8 @@ async def handle_unsupported_media(event: NewMessage.Event) -> Optional[Dict[str
 
         # Set the mapped text if there is an unsupported sticker type
         if mime in sticker_map:
-            base_msg["text"] = sticker_map[mime]
-            return base_msg
+            user_massage.text = sticker_map[mime]
+            return user_massage
 
     return None  # No unsupported media found
 
@@ -103,34 +106,36 @@ async def handle_chat_media(event: NewMessage.Event) -> Optional[Dict[str, Any]]
     if not any((message.photo, message.sticker, message.voice)):
         return None
 
-    base_msg = build_base_cat_message(event)
+    user_message = UserMessage(
+        meowgram=MeowgramPayload.build_new_message(event)
+    )
 
     media_bytes = await message.download_media(file=bytes)
 
     # In case of an error while downloading the file,
     # inform the user and return
     if media_bytes is None:
-        base_msg["text"] = "*[Error downloading, suggest user resubmit file]*"
-        return base_msg
+        user_message.text = "*[Error downloading, suggest user resubmit file]*"
+        return user_message
 
     if message.photo:
-        base_msg["image"] = await asyncio.to_thread(encode_image, media_bytes)
-        base_msg["text"] = "*[Image]*"
-        return base_msg
+        user_message.image = await asyncio.to_thread(encode_image, media_bytes)
+        user_message.text = "*[Image]*"
+        return user_message
 
     # Check for video or animated stickers was already done in handle_unsupported_media
     # but to be sure we check again here if the sticker is an image
     if message.sticker and message.sticker.mime_type == "image/webp": 
         # The file attribute offer an easy way to access the attributes of a sticker
         emoji = message.file.emoji
-        base_msg["image"] = await asyncio.to_thread(encode_image, media_bytes)
-        base_msg["text"] = f"*[Telegram Sticker with associated emoji: {emoji}]*" if emoji else "*[Telegram Sticker]*"
-        return base_msg
+        user_message.image = await asyncio.to_thread(encode_image, media_bytes)
+        user_message.text = f"*[Telegram Sticker with associated emoji: {emoji}]*" if emoji else "*[Telegram Sticker]*"
+        return user_message
 
     if message.voice:
-        base_msg["audio"] = await asyncio.to_thread(encode_voice, media_bytes)
-        base_msg["text"] = "*[Voice Note]*"
-        return base_msg
+        user_message.audio = await asyncio.to_thread(encode_voice, media_bytes)
+        user_message.text = "*[Voice Note]*"
+        return user_message
 
 
 async def handle_file(event: NewMessage.Event, cat_client: CheshireCatClient) -> None:
