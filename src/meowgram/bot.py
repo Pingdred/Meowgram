@@ -378,7 +378,7 @@ class MeowgramBot:
 
         # Handle TTS
         if  message.get("audio"):
-            voice_path = await self.process_audio(user_id, message)
+            voice_path = await self.process_audio(message)
             caption = message["text"] if settings["show_tts_text"] else None
             await self.client.send_file(
                 user_id,
