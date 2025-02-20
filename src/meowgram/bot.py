@@ -162,6 +162,13 @@ class MeowgramBot:
 
         user_id = event.sender_id
         cat_client: CheshireCatClient = await self.ensure_cat_connection(user_id)
+
+        # Remove buttons from the previous message if present
+        previus_message_id = event.message.id - 1
+        previus_message: Message = await self.client.get_messages(user_id, ids=previus_message_id)
+        if previus_message.buttons:
+            await self.client.edit_message(entity=previus_message, buttons=None)
+
         if not cat_client:
             return
 
