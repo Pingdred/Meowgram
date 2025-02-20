@@ -1,3 +1,5 @@
+import base64
+import io
 import os
 import re
 import time
@@ -346,7 +348,7 @@ class MeowgramBot:
                 await self.client.send_message(user_id, f"An error occurred while processing your request: {message}")
             case "notification":
                 pass           
-        
+
     async def handle_chat_message(self, user_id: int, message: dict):
         # Extract Meowgram-specific parameters if present
         meowgram_params = message.get("meowgram", {})
@@ -375,26 +377,19 @@ class MeowgramBot:
             buttons = button_list if button_list else None
 
         # Handle TTS
-        tts_url = message.get("tts")
-        if tts_url:
-            response = requests.get(tts_url)
-            if response.status_code == 200:
-                with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                    tmp.write(response.content)
-                    voice_path = await asyncio.to_thread(audio_to_voice, tmp.name)
-                    
-                    caption = message["text"] if settings["show_tts_text"] else None
-                    await self.client.send_file(
-                        user_id,
-                        voice_path,
-                        voice_note=True,
-                        caption=caption,
-                        buttons=buttons,
-                        **send_params
-                    )
-                    os.remove(voice_path)
-                    os.remove(tmp.name)
-                    return
+        if  message.get("audio"):
+            voice_path = await self.process_audio(user_id, message)
+            caption = message["text"] if settings["show_tts_text"] else None
+            await self.client.send_file(
+                user_id,
+                voice_path,
+                voice_note=True,
+                caption=caption,
+                buttons=buttons,
+                **send_params
+            )
+            await asyncio.to_thread(os.remove, voice_path)
+            return
                 
         if not message.get("text"):
             return
@@ -435,3 +430,37 @@ class MeowgramBot:
         """
         async with self.client.action(user_id, action, delay=seconds):
             await asyncio.sleep(seconds)
+           
+    async def process_audio(self, message: dict):
+        """
+        Handles an audio message from Cheshire Cat.
+
+        Args:
+            user_id (int): The ID of the user to send the audio message to.
+            message (dict): The audio message to be sent.
+        """
+        audio = message.get("audio")
+        # Check if audio is a data uri
+        if audio.startswith("data:"):
+            # Extract the mime type and the base64 encoded audio
+            encoded_audio = audio.split(";base64,")[1]
+            audio_data = base64.b64decode(encoded_audio)
+
+            # Save the audio to a temporary file
+            with tempfile.NamedTemporaryFile() as tmp:
+                tmp.write(audio_data)
+                tmp.seek(0)
+                voice_path = await asyncio.to_thread(audio_to_voice, tmp.name)
+
+            return voice_path
+    
+        # Otherwise should be an URL
+        response = requests.get(audio)
+        if response.status_code == 200:
+            # Save the audio to a temporary file
+            with tempfile.NamedTemporaryFile() as tmp:
+                tmp.write(response.content)
+                tmp.seek(0)
+                voice_path = await asyncio.to_thread(audio_to_voice, tmp.name)
+            
+            return voice_path
