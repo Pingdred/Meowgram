@@ -8,11 +8,13 @@ import logging
 import asyncio
 import functools
 
+from typing import Optional
+
 from PIL import Image
 from enum import Enum
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel
 
-from telethon.events import NewMessage, CallbackQuery
+from telethon.events import NewMessage
 
 # Conversational Form State
 class CatFormState(Enum):
@@ -22,57 +24,26 @@ class CatFormState(Enum):
     CLOSED = "closed"
 
 
-
 class PayloadType(Enum):
     FORM_ACTION = "form_action"
     NEW_MESSAGE = "new_message"
     USER_ACTION = "user_action" 
 
 
-class NewMessageData(BaseModel):
-    update: dict
-    
-
-class FormActionData(BaseModel):
-    form_name: str
-    action: str
+class UserInfo(BaseModel):
+    id: int
+    username: str
+    first_name: str | None 
+    last_name: str | None
 
 
-class MeowgramPayload(BaseModel):
-    data: FormActionData | NewMessageData
+class ReplyTo(BaseModel):
+    is_from_bot: bool = False
+    when: float
+    text: Optional[str] = None
+    audio: Optional[str] = None
+    image: Optional[str] = None 
 
-    @computed_field
-    def type(self) -> PayloadType:
-        if isinstance(self.data, FormActionData):
-            return PayloadType.FORM_ACTION
-        
-        if isinstance(self.data, NewMessageData):
-            return PayloadType.NEW_MESSAGE
-    
-
-    @classmethod
-    def build_form_action(cls, form_name: str, action: str) -> "MeowgramPayload":
-        return cls(
-            data=FormActionData(
-                form_name=form_name,
-                action=action
-            )
-        )
-
-
-    @classmethod
-    def build_new_message(cls, event:  NewMessage.Event | CallbackQuery.Event) -> "MeowgramPayload":
-        return cls(
-            data=NewMessageData(
-                update=build_update(event)
-            )
-        )
-
-class UserMessage(BaseModel):
-    text: str | None = None
-    audio: str | None = None
-    image: str | None = None
-    meowgram: MeowgramPayload
 
 def audio_to_voice(input_path: str) -> str:
     """Convert audio to Telegram voice format"""
@@ -117,37 +88,6 @@ def encode_voice(voice_bytes: bytes) -> str:
     mime_type = "audio/ogg" # Telegram voice messages are in OGG format
 
     return f"data:{mime_type};base64,{encoded_voice}"
-
-
-def build_update(event: NewMessage.Event | CallbackQuery.Event) -> dict:
-    update = {
-        "message": {}
-    }
-
-    if isinstance(event, NewMessage.Event):
-        update["message"]["message_id"] = event.message.id
-    elif isinstance(event, CallbackQuery.Event):
-        update["message"]["message_id"] = event.query.msg_id
-
-    if event.sender:
-        update["message"]["from"] = {
-            "id": event.sender_id,
-            "username": event.sender.username,
-            "first_name": event.sender.first_name,
-            "last_name": event.sender.last_name,
-        }
-
-    return update
-
-
-def build_base_cat_message(event: NewMessage.Event | CallbackQuery.Event) -> dict:
-    new_message = {
-        "meowgram": {
-            "update": build_update(event)
-        }
-    }
-
-    return new_message
 
 
 def clean_code_blocks(text):

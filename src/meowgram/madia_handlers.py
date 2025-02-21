@@ -2,15 +2,18 @@ import os
 import shutil
 import asyncio
 import mimetypes
+import logging
 
 from tempfile import mkdtemp
 from typing import Any, Dict, Optional
 
+from telethon import TelegramClient
 from telethon.tl.types import Message
-from telethon.events import NewMessage
+from telethon.events import NewMessage, CallbackQuery
+from pydantic import BaseModel, computed_field
 
 from cheshire_cat.client import CheshireCatClient
-from utils import encode_image, encode_voice, UserMessage, MeowgramPayload
+from utils import encode_image, encode_voice, UserInfo, ReplyTo, PayloadType
 
 """
 Hierarchy of the message media types:
@@ -40,7 +43,110 @@ Message
     └── dice                                Animated emoji/dice (used for sending dynamic emojis or dice)
 """
 
-async def handle_unsupported_media(event: NewMessage.Event) -> Optional[UserMessage]:
+
+
+class NewMessageData(BaseModel):
+    message_id: int
+    user_info: UserInfo
+    reply_to_message: ReplyTo | None
+
+    @classmethod
+    async def from_event(cls, event: NewMessage.Event | CallbackQuery.Event) -> "NewMessageData":
+
+        if isinstance(event, NewMessage.Event):
+            sender = event.sender
+            message: Message = event.message
+        elif isinstance(event, CallbackQuery.Event):
+            sender = event.query.sender
+            message: Message = event.query.message
+
+        logging.critical(message.reply_to)
+
+        if message.reply_to:
+            client: TelegramClient = event.client
+
+            reply_to_msg_id = message.reply_to.reply_to_msg_id
+            original_reply_to = await client.get_messages(message.chat_id, ids=reply_to_msg_id)
+
+            bot_id = (await client.get_me()).id
+
+            # If the message is from a user, from_id will be None
+            # so we need to check the peer_id instead
+            if original_reply_to.from_id:
+                reply_sender_id = original_reply_to.from_id.user_id
+            else:
+                reply_sender_id = original_reply_to.peer_id.user_id
+
+            reply_to_message = ReplyTo(
+                when=original_reply_to.date.timestamp(),
+                is_from_bot=(reply_sender_id == bot_id)
+            )
+
+            if original_reply_to.media:
+                # If the media is an unsupported media type, or a suppoted chat media, handle it
+                if user_message := await handle_unsupported_media(original_reply_to) or await handle_chat_media(original_reply_to):
+                    reply_to_message.text = user_message.text
+                    reply_to_message.image = user_message.image
+                    reply_to_message.audio = user_message.audio
+
+            # Set the original message text if it is not empty
+            if original_reply_to.text:
+                reply_to_message.text = original_reply_to.text 
+
+        return cls(
+            message_id=message.id,
+            user_info=UserInfo(
+                id=sender.id,
+                username=sender.username,
+                first_name=sender.first_name,
+                last_name=sender.last_name
+            ),
+            reply_to_message=reply_to_message if message.reply_to else None
+        )
+
+
+class FormActionData(BaseModel):
+    form_name: str
+    action: str
+
+
+class MeowgramPayload(BaseModel):
+    data: FormActionData | NewMessageData
+
+    @computed_field
+    def type(self) -> PayloadType:
+        if isinstance(self.data, FormActionData):
+            return PayloadType.FORM_ACTION
+        
+        if isinstance(self.data, NewMessageData):
+            return PayloadType.NEW_MESSAGE
+    
+
+    @classmethod
+    def form_action(cls, form_name: str, action: str) -> "MeowgramPayload":
+        return cls(
+            data=FormActionData(
+                form_name=form_name,
+                action=action
+            )
+        )
+
+
+    @classmethod
+    async def from_event(cls, event:  NewMessage.Event | CallbackQuery.Event) -> "MeowgramPayload":
+        return cls(
+            data=await NewMessageData.from_event(event)
+        )
+    
+
+class UserMessage(BaseModel):
+    text: Optional[str] = None
+    image: Optional[str] = None
+    audio: Optional[str] = None
+    meowgram: Optional[MeowgramPayload] = None
+
+
+async def handle_unsupported_media(event: NewMessage.Event | Message) -> Optional[UserMessage]:
     """
     Handle unsupported media types. This includes GIFs, video notes, polls, contacts, locations, and venues.
 
@@ -51,10 +157,16 @@ async def handle_unsupported_media(event: NewMessage.Event) -> Optional[UserMess
         A dictionary with the formatted message if an unsupported media type is found,
         or None otherwise.
     """
-    message: Message = event.message
-    user_massage = UserMessage(
-        meowgram=MeowgramPayload.build_new_message(event),
-    )
+
+    if isinstance(event, NewMessage.Event):
+        message: Message = event.message
+    else:
+        message: Message = event    
+
+    user_massage = UserMessage()
+
+    if isinstance(event, NewMessage.Event):
+        user_massage.meowgram = await MeowgramPayload.from_event(event)
 
     unsupported_texts = {
         "gif": "*[GIF]* (Not supported)",
@@ -89,7 +201,7 @@ async def handle_unsupported_media(event: NewMessage.Event) -> Optional[UserMess
     return None  # No unsupported media found
 
 
-async def handle_chat_media(event: NewMessage.Event) -> Optional[Dict[str, Any]]:
+async def handle_chat_media(event: NewMessage.Event | Message) -> Optional[Dict[str, Any]]:
     """
     Handle media that can be included in the chat with the Cheshire Cat.
 
@@ -100,15 +212,20 @@ async def handle_chat_media(event: NewMessage.Event) -> Optional[Dict[str, Any]]
         A dictionary with the formatted message if a supported specific media is present,
         or None otherwise.
     """
-    message: Message = event.message
+    
+    if isinstance(event, NewMessage.Event):
+        message: Message = event.message
+    else:
+        message: Message = event
     
     # If the media cannot be sent as a chat message skip this handler
     if not any((message.photo, message.sticker, message.voice)):
         return None
+    
+    user_message = UserMessage()
 
-    user_message = UserMessage(
-        meowgram=MeowgramPayload.build_new_message(event)
-    )
+    if isinstance(event, NewMessage.Event):
+        user_message.meowgram = await MeowgramPayload.from_event(event)
 
     media_bytes = await message.download_media(file=bytes)
 

@@ -18,14 +18,18 @@ from telethon.tl.types import BotCommand, BotCommandScopeDefault, Message
 from telethon.tl.functions.bots import SetBotCommandsRequest
 from cheshire_cat.client import CheshireCatClient
 
-from meowgram.madia_handlers import handle_unsupported_media, handle_chat_media, handle_file
+from meowgram.madia_handlers import (
+    handle_unsupported_media,
+    handle_chat_media,
+    handle_file,
+    UserMessage,
+    MeowgramPayload,
+)
 from utils import (
     audio_to_voice,
     CatFormState,
     clean_code_blocks,
-    clear_chat_history,
-    UserMessage,
-    MeowgramPayload
+    clear_chat_history
 )
 
 
@@ -89,7 +93,7 @@ class MeowgramBot:
 
     # SECTION: Telegram event handlers
     
-    async def access_handler(self, event):
+    async def access_handler(self, event: NewMessage.Event):
         if event.sender.bot:
             raise StopPropagation
             
@@ -185,12 +189,13 @@ class MeowgramBot:
         if not message.media:
             new_message = UserMessage(
                 text=message.text,
-                meowgram=MeowgramPayload.build_new_message(event)
+                meowgram= await MeowgramPayload.from_event(event)
             )
 
             await cat_client.send_message(new_message)
             return
 
+        # If the media is an unsupported media type, or a suppoted chat media, handle it
         if user_message := await handle_unsupported_media(event) or await handle_chat_media(event):
             # Add the caption associated with the media if present.
             if message.text:
@@ -226,7 +231,7 @@ class MeowgramBot:
 
         user_message = UserMessage(
             text=action,
-            meowgram=MeowgramPayload.build_form_action(form_name, action)
+            meowgram=MeowgramPayload.form_action(form_name, action)
         )
 
         await cat_client.send_message(user_message)
