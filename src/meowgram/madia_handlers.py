@@ -5,10 +5,10 @@ import mimetypes
 import logging
 
 from tempfile import mkdtemp
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from telethon import TelegramClient
-from telethon.tl.types import Message
+from telethon.tl.types import Message, User
 from telethon.events import NewMessage, CallbackQuery
 from pydantic import BaseModel, computed_field
 
@@ -48,61 +48,118 @@ Message
 class NewMessageData(BaseModel):
     message_id: int
     user_info: UserInfo
-    reply_to_message: ReplyTo | None
+    reply_to_message: Optional[ReplyTo] = None
 
     @classmethod
     async def from_event(cls, event: NewMessage.Event | CallbackQuery.Event) -> "NewMessageData":
+        """
+        Create a new instance of NewMessageData from a Telegram event.
 
-        if isinstance(event, NewMessage.Event):
-            sender = event.sender
-            message: Message = event.message
-        elif isinstance(event, CallbackQuery.Event):
-            sender = event.query.sender
-            message: Message = event.query.message
+        Args:
+            event (NewMessage.Event | CallbackQuery.Event): The Telegram event containing the message.
 
-        logging.critical(message.reply_to)
+        Returns:
+            NewMessageData: The new instance of NewMessageData.
+        """
+        sender, message = await cls._get_sender_and_message(event)
 
-        if message.reply_to:
-            client: TelegramClient = event.client
-
-            reply_to_msg_id = message.reply_to.reply_to_msg_id
-            original_reply_to = await client.get_messages(message.chat_id, ids=reply_to_msg_id)
-
-            bot_id = (await client.get_me()).id
-
-            # If the message is from a user, from_id will be None
-            # so we need to check the peer_id instead
-            if original_reply_to.from_id:
-                reply_sender_id = original_reply_to.from_id.user_id
-            else:
-                reply_sender_id = original_reply_to.peer_id.user_id
-
-            reply_to_message = ReplyTo(
-                when=original_reply_to.date.timestamp(),
-                is_from_bot=(reply_sender_id == bot_id)
-            )
-
-            if original_reply_to.media:
-                # If the media is an unsupported media type, or a suppoted chat media, handle it
-                if user_message := await handle_unsupported_media(original_reply_to) or await handle_chat_media(original_reply_to):
-                    reply_to_message.text = user_message.text
-                    reply_to_message.image = user_message.image
-                    reply_to_message.audio = user_message.audio
-
-            # Set the original message text if it is not empty
-            if original_reply_to.text:
-                reply_to_message.text = original_reply_to.text 
-
-        return cls(
+        new_message_data = cls(
             message_id=message.id,
             user_info=UserInfo(
                 id=sender.id,
                 username=sender.username,
                 first_name=sender.first_name,
                 last_name=sender.last_name
-            ),
-            reply_to_message=reply_to_message if message.reply_to else None
+            )
         )
+
+        if message.reply_to:
+            new_message_data.reply_to_message = await cls._handle_reply_to(message, event.client)
+
+        return new_message_data
+    
+    @staticmethod
+    async def _get_sender_and_message(event: NewMessage.Event | CallbackQuery.Event) -> Tuple[User, Message]:
+        if isinstance(event, NewMessage.Event):
+            return event.sender, event.message
+        elif isinstance(event, CallbackQuery.Event):
+            return event.query.sender, event.query.message
+
+    @classmethod
+    async def _handle_reply_to(cls, message: Message, client: TelegramClient) -> ReplyTo:
+        """
+        Handle the reply_to attribute of a Telegram message.
+        """
+        original_message = await cls._get_original_message(message, client)
+
+        base_reply_to = await cls._build_base_reply_to(original_message, client)
+        reply_to_message = await cls._set_media_content(base_reply_to, original_message)
+
+        # Reset the text to the original message text if it is not empty
+        # _set_media_content might have set a text message
+        if original_message.text:
+            reply_to_message.text = original_message.text
+
+        return reply_to_message
+
+    @staticmethod
+    async def _get_original_message(message: Message, client: TelegramClient) -> Message:
+        """
+        Get the original message that the user is replying to.
+
+        Args:
+            message (Message): The message containing the reply_to attribute.
+            client (TelegramClient): The client used to interact with the Telegram API.
+
+        Returns:
+            Message: The original message that the user is replying to.        
+        """
+        reply_to_msg_id = message.reply_to.reply_to_msg_id
+        return await client.get_messages(message.chat_id, ids=reply_to_msg_id)
+
+    @staticmethod
+    async def _build_base_reply_to(original_message: Message, client: TelegramClient) -> ReplyTo:
+        """
+        Build a base ReplyTo object from a Telegram message.
+
+        Args:
+            original_message (Message): The original message to reply to.
+            client (TelegramClient): The client used to interact with the Telegram API.
+
+        Returns:
+            ReplyTo: The base reply_to_message object.
+        """
+
+        bot_id = (await client.get_me()).id
+        sender_id = original_message.sender_id
+
+        return ReplyTo(
+            when=original_message.date.timestamp(),
+            is_from_bot=(sender_id == bot_id)
+        )
+
+    @staticmethod
+    async def _set_media_content(reply_to_message: ReplyTo, message: Message) -> ReplyTo:
+        """
+        Build a ReplyTo object from a Telegram message.
+        
+        Args:
+            reply_to_message (ReplyTo): The reply_to_message object to set the media content on.
+            message (Message): The Telegram message containing the media content.
+
+        Returns:
+            ReplyTo: The reply_to_message object with the media content set.
+        """
+
+        if not message.media:
+            return reply_to_message
+        
+        if user_message := (await handle_unsupported_media(message) or await handle_chat_media(message)):
+            reply_to_message.text = user_message.text
+            reply_to_message.image = user_message.image
+            reply_to_message.audio = user_message.audio
+
+        return reply_to_message
 
 
 class FormActionData(BaseModel):
