@@ -177,7 +177,7 @@ class MeowgramBot:
         # Remove buttons from the previous message if present
         previus_message_id = event.message.id - 1
         previus_message: Message = await self.client.get_messages(user_id, ids=previus_message_id)
-        if previus_message.buttons:
+        if previus_message and previus_message.buttons:
             await self.client.edit_message(entity=previus_message, buttons=None)
 
         if not cat_client:
@@ -362,7 +362,10 @@ class MeowgramBot:
                 self.logger.error(f"Error message received from Cheshire Cat: {message}")
                 await self.client.send_message(user_id, f"An error occurred while processing your request: {message}")
             case "notification":
-                pass           
+                self.logger.info(f"Notification message received from Cheshire Cat: {message}")
+                await self.send_temporary_message(user_id, message["content"])
+            case _:
+                self.logger.error(f"Unknown message type received from Cheshire Cat: {message}")           
 
     async def handle_chat_message(self, user_id: int, message: dict):
         # Extract Meowgram-specific parameters if present
@@ -479,3 +482,12 @@ class MeowgramBot:
                 voice_path = await asyncio.to_thread(audio_to_voice, tmp.name)
             
             return voice_path
+
+    async def send_temporary_message(self, user_id: int, message: str, seconds: int = 7):
+        """
+        Sends a message to a user after a specified delay.
+        """
+        message = await self.client.send_message(user_id, message)
+        await asyncio.sleep(seconds)
+        await message.delete()
+    
