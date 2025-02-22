@@ -378,18 +378,19 @@ class MeowgramBot:
         active_form = meowgram_params.get("active_form")
         if active_form:
             form_state = active_form["state"]
+            form_name = active_form["name"].replace(" ", "_").lower()
             button_list = []
             
             if form_state == CatFormState.WAIT_CONFIRM.value:
                 button_list.append([
                     Button.inline("Confirm", 
-                        data=f"form_{active_form['name']}_confirm")
+                        data=f"form_{form_name}_confirm")
                 ])
             
             if form_state != CatFormState.CLOSED.value:
                 button_list.append([
                     Button.inline("Cancel",
-                        data=f"form_{active_form['name']}_cancel")
+                        data=f"form_{form_name}_cancel")
                 ])
             
             buttons = button_list if button_list else None
