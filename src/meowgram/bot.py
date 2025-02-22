@@ -395,6 +395,21 @@ class MeowgramBot:
             
             buttons = button_list if button_list else None
 
+        if len(message["text"]) > 4000:
+            # Send as a file if the message is too long
+            with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w") as file:
+                file.write(message["text"])
+                file_path = file.name
+
+            await self.client.send_file(
+                user_id,
+                file_path,
+                buttons=buttons,
+                **send_params
+            )
+            os.remove(file_path)
+            message["text"] = None
+
         # Handle TTS
         if  message.get("audio"):
             voice_path = await self.process_audio(message)
