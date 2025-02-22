@@ -177,7 +177,7 @@ class MeowgramBot:
         # Remove buttons from the previous message if present
         previus_message_id = event.message.id - 1
         previus_message: Message = await self.client.get_messages(user_id, ids=previus_message_id)
-        if previus_message and previus_message.buttons:
+        if (previus_message is not None) and (previus_message.buttons is not None):
             await self.client.edit_message(entity=previus_message, buttons=None)
 
         if not cat_client:
