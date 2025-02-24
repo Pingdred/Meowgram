@@ -13,11 +13,12 @@ from dataclasses import dataclass
 from typing import Dict, Set
 
 from telethon import TelegramClient, Button
-from telethon.events import NewMessage, CallbackQuery, StopPropagation
-from telethon.tl.types import BotCommand, BotCommandScopeDefault, Message
-from telethon.tl.functions.bots import SetBotCommandsRequest
+from telethon.events import NewMessage, CallbackQuery, StopPropagation, UserUpdate
+from telethon.errors import MessageIdInvalidError
+from telethon.tl.types import Message
 from cheshire_cat.client import CheshireCatClient
 
+from meowgram.menu.menu import MenuManager, MenuButton
 from meowgram.madia_handlers import (
     handle_unsupported_media,
     handle_chat_media,
@@ -29,7 +30,7 @@ from utils import (
     audio_to_voice,
     CatFormState,
     clean_code_blocks,
-    clear_chat_history
+    delete_ccat_conversation
 )
 
 
@@ -91,7 +92,7 @@ class MeowgramBot:
 
         self.logger = logging.getLogger(__name__)
 
-    # SECTION: Telegram event handlers
+    # SECTION: Telegram event handler
     
     async def access_handler(self, event: NewMessage.Event):
         if event.sender.bot:
@@ -101,18 +102,34 @@ class MeowgramBot:
             await event.reply("You are not allowed to use this bot.")
             raise StopPropagation          
 
+    async def menu_handler(self, event: NewMessage.Event):
+        current_menu = self.menu_handler.get_current_menu(event.sender_id)
+
+        handled = False
+        try:
+            handled = await self.menu_handler.handle_menu(event)
+        except (Exception, BaseException) as e:
+            from traceback import print_exc
+            print_exc()
+            logging.error(f"An error occurred handling the menu `{current_menu}`: {str(e)}")
+            handled = True
+
+        if handled:
+            raise StopPropagation
+
     async def command_handler(self, event: CallbackQuery.Event):
         """Handle commands"""
         command = event.message.text
         try:
             match command:
                 case "/start":
-                    await event.reply("Welcome to Meowgram! How can I help you today?")
-
-                case "/clear":
-                    await clear_chat_history(self, event)
+                    menu = self.menu_handler.get_keyboard("main")
+                    await event.reply("Welcome to Meowgram! How can I help you today?", buttons=menu)
+                    self.menu_handler.set_current_menu(event.sender_id, "main")
         except Exception as e:
+            from traceback import print_exc
             self.logger.error(f"An error occurred handling the command {command}: {e}")
+            print_exc()
         finally:
             raise StopPropagation
 
@@ -177,8 +194,11 @@ class MeowgramBot:
         # Remove buttons from the previous message if present
         previus_message_id = event.message.id - 1
         previus_message: Message = await self.client.get_messages(user_id, ids=previus_message_id)
-        if (previus_message is not None) and (previus_message.buttons is not None):
-            await self.client.edit_message(entity=previus_message, buttons=None)
+        try:
+            if (previus_message is not None) and (previus_message.buttons is not None):
+                await self.client.edit_message(entity=previus_message, buttons=None)
+        except MessageIdInvalidError:
+            logging.debug(f"Message {previus_message_id} not found or unable to edit")
 
         if not cat_client:
             return
@@ -240,25 +260,48 @@ class MeowgramBot:
 
     # SECTION: Bot initialization
 
+    def setup_menus(self):
+        main_menu = [
+            [MenuButton(text="🧹 Clear chat history", submenu="chat_history_menu")]
+        ]
+
+        chat_history_menu = [
+            [MenuButton(
+                text="Yes, clear chat history",
+                callback=lambda e: delete_ccat_conversation(self, e.sender_id),
+                submenu="main"
+            )],
+            [MenuButton(text="No, cancel", submenu="main")],
+        ]
+
+        self.menu_handler.create_menu("main", main_menu, parent="main")
+        self.menu_handler.create_menu("chat_history_menu", chat_history_menu, parent="main")
+
     def set_telegram_handlers(self):
         """Setup event handlers"""
 
         # Handler for access control
         self.client.add_event_handler(
             self.access_handler,
-            NewMessage
+            NewMessage(incoming=True)
+        )
+
+        # Handler for menus
+        self.client.add_event_handler(
+            self.menu_handler,
+            NewMessage(incoming=True)
         )
 
         # Handler for commands
         self.client.add_event_handler(
             self.command_handler, 
-            NewMessage(pattern=r"/.*")
+            NewMessage(pattern=r"/.*", incoming=True)
         )
 
         # Handler for messages
         self.client.add_event_handler(
             self.message_handler,
-            NewMessage
+            NewMessage(incoming=True)
         )
 
         # Handler for form actions
@@ -267,26 +310,16 @@ class MeowgramBot:
             CallbackQuery(pattern=r"form_.*"),
         )
 
-    async def set_commands(self):
-        # Delete all commands
-        await self.client(SetBotCommandsRequest(scope=BotCommandScopeDefault(), lang_code='', commands=[]))
-
-        # Set new commands
-        commands = [
-            BotCommand(command="clear", description="Clear chat history"),
-        ]
-        await self.client(SetBotCommandsRequest(scope=BotCommandScopeDefault() ,lang_code='', commands=commands))
-
     # SECTION: Bot lifecycle
 
     async def run(self):
         """Start bot with unified message handler"""        
         try:
+            # Create the bot menus
+            self.setup_menus()
+
             # Start the bot
             await self.client.start(bot_token=self.bot_token)
-
-            # Set the bot commands
-            await self.set_commands()
 
             self.logger.info("Bot started and listening")
 
@@ -294,6 +327,10 @@ class MeowgramBot:
             await self.client.disconnected
         except asyncio.CancelledError:
             self.logger.info("Safely shutting down bot")
+        except Exception as e:
+            from traceback import print_exc
+            self.logger.error(f"An error occurred while running the bot: {e}")
+            print_exc()
         finally:
             await self.cleanup()
 
