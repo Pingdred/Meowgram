@@ -6,7 +6,6 @@ import ffmpeg
 import base64
 import logging
 import asyncio
-import functools
 
 from typing import Optional
 
@@ -107,31 +106,17 @@ def clean_code_blocks(text):
     return re.sub(pattern, '```\n', text)
 
 
-async def clear_chat_history(meowgram, event: NewMessage.Event) -> bool:
+async def delete_ccat_conversation(meowgram, user_id: int) -> bool:
     logger = logging.getLogger("meowgram")
-
-    user_id = event.sender_id
-    message_id = event.message.id
 
     cat_client = await meowgram.ensure_cat_connection(user_id)
     if not cat_client:
-        logger.error(f"Could not clear Chehsire Cat conversation history for user {user_id}")
+        logger.error(f"Could not delete Chehsire Cat conversation for user {user_id}")
+        meowgram.client.send_message(user_id, "Could not connect to Chehsire Cat")
         return False
-    
-    
+
     wipe_conversation = cat_client.api.memory.wipe_conversation_history
-    await asyncio.to_thread(
-        functools.partial(wipe_conversation, _headers={"user_id": user_id})
-    )
+    await asyncio.to_thread(wipe_conversation, _headers={"user_id": user_id})
+    await meowgram.send_temporary_message(user_id, "Conversation history wiped")
 
-    start = message_id
-    batch_size = 100
-
-    while True:
-        message_ids = list(range(start, start - batch_size, -1))
-        try:
-            await event.client.delete_messages(user_id, message_ids)
-            start -= batch_size
-        except Exception as e:
-            logger.error(f"Error deleting messages: {type(e)} - {e}")
-            break
+    return True
