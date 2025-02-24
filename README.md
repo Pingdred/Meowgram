@@ -84,26 +84,20 @@ You can find **Meowgram Connect** in the plugin registry and install it directly
 
 ## Media Support
 
-Meowgram supports the media features introduced in Cheshire Cat `1.8.0`.
+Meowgram supports the media features introduced in Cheshire Cat `1.8.0`. Each plugin that utilizes these features is compatible with Meowgram to manage `images` and `audio`.
 
-### Sending Voice Notes
+### Available Plugins for Speech-to-Text (STT)
 
-To send voice notes via Meowgram, install the [Whispering Cat](https://github.com/Furrmidable-Crew/Whispering_Cat) plugin for Cheshire Cat. Whispering Cat enables speech-to-text functionality, allowing you to dictate messages seamlessly.
+To send voice notes via Meowgram, you need a **Speech-to-Text** (STT) plugin. Currently, the following plugins are supported:
 
-> **Note:**  
-> Currently, **Whispering Cat** is the only plugin supporting this feature. Expect more options in the future.
+- **[Whispering Cat](https://github.com/Furrmidable-Crew/Whispering_Cat)** This plugin enables speech-to-text functionality, allowing you to dictate messages seamlessly.
 
-Install **Whispering Cat** from the **Plugins** tab in the Cheshire Cat Admin.
+### Available Plugins for Text-to-Speech (TTS)
 
-![Whispering Cat](https://github.com/Pingdred/Meowgram/assets/67059270/ff652354-0e9e-4505-b307-6af90d56d0cf)
+To receive voice notes, you need a **Text-to-Speech** (TTS) plugin. The following plugin is currently supported:
 
-### Receiving Voice Notes
+- **[TTS powered by OpenAI](https://github.com/Pingdred/openai-tts)** This plugin converts text into speech, allowing you to listen to received voice notes.
 
-To receive voice notes in Meowgram, install the [TTS powered by OpenAI](https://github.com/Pingdred/openai-tts) plugin for text-to-speech conversion.
+### Add your Plugin
 
-> **Note:**  
-> Currently, **TTS powered by OpenAI** is the only supported plugin for this functionality, but additional options are expected soon.
-
-Install **TTS powered by OpenAI** from the **Plugins** tab in the Cheshire Cat Admin.
-
-![TTS powered by OpenAI](assets/Screenshot%20from%202024-05-13%2015-46-35.png)
+If you've developed your own plugin and would like to see it listed here, feel free to open an issue to propose the addition.
