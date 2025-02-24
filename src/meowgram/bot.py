@@ -540,7 +540,11 @@ class MeowgramBot:
         """
         Sends a message to a user after a specified delay.
         """
-        message = await self.client.send_message(user_id, message)
-        await asyncio.sleep(seconds)
-        await message.delete()
+        
+        async def background_task():
+            msg = await self.client.send_message(user_id, message)
+            await asyncio.sleep(seconds)
+            await msg.delete()
+
+        asyncio.create_task(background_task())
     
