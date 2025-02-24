@@ -89,6 +89,7 @@ class MeowgramBot:
             access_type=os.getenv("ACCESS_TYPE", "all"),
             users=[int(id) for id in os.getenv("ACCESS_LIST", "").split(",")],
         )
+        self.menu_handler = MenuManager()
 
         self.logger = logging.getLogger(__name__)
 
