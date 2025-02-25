@@ -1,5 +1,4 @@
 import base64
-import io
 import os
 import re
 import time
@@ -15,7 +14,7 @@ from typing import Dict, Set
 from telethon import TelegramClient, Button
 from telethon.events import NewMessage, CallbackQuery, StopPropagation
 from telethon.errors import MessageIdInvalidError
-from telethon.tl.types import Message
+from telethon.tl.types import Message, User
 from cheshire_cat.client import CheshireCatClient
 
 from meowgram.menu.menu import MenuManager, MenuButton
@@ -54,20 +53,34 @@ class AccessControl:
             self.access_type = AccessType.ALL
             logging.error(f"Invalid access type: {self.access_type}, defaulting to {AccessType.ALL}")
 
-    def is_user_allowed(self, user_id: int) -> bool:
+    def is_user_allowed(self, sender: User) -> bool:
+
+        if sender.bot:
+            logging.warning(f"{sender.id} is a bot. Refusing access.")  
+            return False
+
+        user_id = sender.id
 
         logging.debug(f"Checking user {user_id} against {self.access_type}")
         logging.debug(f"Users: {self.users}")
 
         if self.access_type == AccessType.ALL:
+            logging.debug("All users are allowed.")
             return True
 
         if self.access_type == AccessType.WHITELIST:
-            return user_id in self.users
+            allowed = user_id in self.users
+            if not allowed:
+                logging.warning("User is not whitelisted. Refusing access.")
+            return allowed
 
         if self.access_type == AccessType.BLACKLIST:
-            return user_id not in self.users
-
+            allowed = user_id not in self.users
+            if not allowed:
+                logging.warning(f"User {user_id} is blacklisted. Refusing access.")
+            return allowed
+        
+        logging.warning(f"Unknown access type: {self.access_type}. Refusing access.")
         return False
 
 
@@ -95,14 +108,16 @@ class MeowgramBot:
 
     # SECTION: Telegram event handler
     
-    async def access_handler(self, event: NewMessage.Event):
-        if event.sender.bot:
-            raise StopPropagation
-            
-        if not self.access_control.is_user_allowed(event.sender_id):
-            await event.reply("You are not allowed to use this bot.")
-            raise StopPropagation          
+    def require_allowed_user(func):
+        """Decorator to check if the user is allowed to use the bot"""
+        async def wrapper(self, event, *args, **kwargs):
+            if not self.access_control.is_user_allowed(event._sender):
+                await event.reply("You are not allowed to use this bot.")
+                raise StopPropagation
+            return await func(self, event, *args, **kwargs)
+        return wrapper
 
+    @require_allowed_user
     async def menu_handler(self, event: NewMessage.Event):
         current_menu = self.menu_handler.get_current_menu(event.sender_id)
 
@@ -118,6 +133,7 @@ class MeowgramBot:
         if handled:
             raise StopPropagation
 
+    @require_allowed_user
     async def command_handler(self, event: CallbackQuery.Event):
         """Handle commands"""
         command = event.message.text
@@ -134,6 +150,7 @@ class MeowgramBot:
         finally:
             raise StopPropagation
 
+    @require_allowed_user
     async def message_handler(self, event: NewMessage.Event):
         """
         Main handler for incoming Telegram messages.
@@ -231,6 +248,7 @@ class MeowgramBot:
             # TODO: Handle caption for document
             await handle_file(event, cat_client)
 
+    @require_allowed_user
     async def form_action_handler(self, event: CallbackQuery.Event):
         """Handle form actions"""
         user_id = event.sender_id
@@ -280,12 +298,6 @@ class MeowgramBot:
 
     def set_telegram_handlers(self):
         """Setup event handlers"""
-
-        # Handler for access control
-        self.client.add_event_handler(
-            self.access_handler,
-            NewMessage(incoming=True)
-        )
 
         # Handler for menus
         self.client.add_event_handler(
