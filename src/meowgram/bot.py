@@ -219,7 +219,8 @@ class MeowgramBot:
             logging.debug(f"Message {previus_message_id} not found or unable to edit")
 
         if not cat_client:
-            return
+            logging.error("Could not connect to Cheshire Cat")
+            raise StopPropagation
 
         message: Message = event.message
 
@@ -255,7 +256,8 @@ class MeowgramBot:
 
         cat_client = await self.ensure_cat_connection(user_id)
         if not cat_client:
-            return
+            logging.error("Could not connect to Cheshire Cat")
+            raise StopPropagation
 
         query = event.data.decode("utf-8")
 
@@ -382,7 +384,7 @@ class MeowgramBot:
         if cat_client.ws is None or cat_client.ws.closed:
 
             if not (await cat_client.connect()):
-                self.logger.error(f"Failed to connect to Cheshire Cat for user {user_id}")
+                self.logger.error("Failed to connect to Cheshire Cat")
                 await self.client.send_message(user_id, "Failed to connect to Cheshire Cat. Please try again later.")
                 return None
                 
@@ -497,14 +499,14 @@ class MeowgramBot:
         
         # If the user has sent a message too recently, skip the typing action
         if current_time - last_typing_action < seconds:
-            self.logger.debug(f"Skipping chat action Typing to user {user_id}")
+            self.logger.debug("Skipping chat action Typing to user ")
             return
 
         # Update the time of the last typing action
         self.last_typing_action[user_id] = current_time
 
         # Simulate typing action
-        self.logger.debug(f"Sending chat action Typing to user {user_id}")
+        self.logger.debug(f"Sending chat action Typing to user ")
         # Create a task to simulate typing and return immediately to avoid blocking
         asyncio.create_task(self.simulate_action(user_id, seconds))
 

@@ -2,7 +2,6 @@ import os
 import shutil
 import asyncio
 import mimetypes
-import logging
 
 from tempfile import mkdtemp
 from typing import Any, Dict, Optional, Tuple
@@ -168,16 +167,7 @@ class FormActionData(BaseModel):
 
 
 class MeowgramPayload(BaseModel):
-    data: FormActionData | NewMessageData
-
-    @computed_field
-    def type(self) -> PayloadType:
-        if isinstance(self.data, FormActionData):
-            return PayloadType.FORM_ACTION
-        
-        if isinstance(self.data, NewMessageData):
-            return PayloadType.NEW_MESSAGE
-    
+    data: FormActionData | NewMessageData    
 
     @classmethod
     def from_action(cls, form_name: str, action: str) -> "MeowgramPayload":
