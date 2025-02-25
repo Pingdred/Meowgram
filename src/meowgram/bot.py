@@ -24,6 +24,7 @@ from meowgram.madia_handlers import (
     handle_file,
     UserMessage,
     MeowgramPayload,
+    FormActionData
 )
 from utils import (
     audio_to_voice,
@@ -267,12 +268,16 @@ class MeowgramBot:
         if not match:
             return
         
-        form_name = match.group("form_name")
-        action = match.group("action")
+
+        form_action_data = FormActionData(
+            form_name=match.group("form_name"),
+            action=match.group("action")
+        )
 
         user_message = UserMessage(
-            text=action,
-            meowgram=MeowgramPayload.from_action(form_name, action)
+            meowgram=MeowgramPayload(
+                data=form_action_data
+            )
         )
 
         await cat_client.send_message(user_message)
@@ -300,6 +305,12 @@ class MeowgramBot:
 
     def set_telegram_handlers(self):
         """Setup event handlers"""
+
+        # Handler for user updates
+        self.client.add_event_handler(
+            self.user_update_handler,
+            UserUpdate
+        )
 
         # Handler for menus
         self.client.add_event_handler(

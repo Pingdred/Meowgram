@@ -167,17 +167,7 @@ class FormActionData(BaseModel):
 
 
 class MeowgramPayload(BaseModel):
-    data: FormActionData | NewMessageData    
-
-    @classmethod
-    def from_action(cls, form_name: str, action: str) -> "MeowgramPayload":
-        return cls(
-            data=FormActionData(
-                form_name=form_name,
-                action=action
-            )
-        )
-
+    data: FormActionData | NewMessageData
 
     @classmethod
     async def from_event(cls, event:  NewMessage.Event | CallbackQuery.Event) -> "MeowgramPayload":
