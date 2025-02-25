@@ -306,12 +306,6 @@ class MeowgramBot:
     def set_telegram_handlers(self):
         """Setup event handlers"""
 
-        # Handler for user updates
-        self.client.add_event_handler(
-            self.user_update_handler,
-            UserUpdate
-        )
-
         # Handler for menus
         self.client.add_event_handler(
             self.menu_handler,
