@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Dict, Set
 
 from telethon import TelegramClient, Button
-from telethon.events import NewMessage, CallbackQuery, StopPropagation, UserUpdate
+from telethon.events import NewMessage, CallbackQuery, StopPropagation
 from telethon.errors import MessageIdInvalidError
 from telethon.tl.types import Message
 from cheshire_cat.client import CheshireCatClient
@@ -252,7 +252,7 @@ class MeowgramBot:
 
         user_message = UserMessage(
             text=action,
-            meowgram=MeowgramPayload.form_action(form_name, action)
+            meowgram=MeowgramPayload.from_action(form_name, action)
         )
 
         await cat_client.send_message(user_message)

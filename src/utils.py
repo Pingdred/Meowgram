@@ -13,7 +13,6 @@ from PIL import Image
 from enum import Enum
 from pydantic import BaseModel
 
-from telethon.events import NewMessage
 
 # Conversational Form State
 class CatFormState(Enum):

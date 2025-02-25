@@ -180,7 +180,7 @@ class MeowgramPayload(BaseModel):
     
 
     @classmethod
-    def form_action(cls, form_name: str, action: str) -> "MeowgramPayload":
+    def from_action(cls, form_name: str, action: str) -> "MeowgramPayload":
         return cls(
             data=FormActionData(
                 form_name=form_name,
