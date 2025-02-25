@@ -9,10 +9,10 @@ from typing import Any, Dict, Optional, Tuple
 from telethon import TelegramClient
 from telethon.tl.types import Message, User
 from telethon.events import NewMessage, CallbackQuery
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel
 
 from cheshire_cat.client import CheshireCatClient
-from utils import encode_image, encode_voice, UserInfo, ReplyTo, PayloadType
+from utils import encode_image, encode_voice, UserInfo, ReplyTo
 
 """
 Hierarchy of the message media types:
