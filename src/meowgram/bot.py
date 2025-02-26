@@ -536,20 +536,24 @@ class MeowgramBot:
             # Extract the mime type and the base64 encoded audio
             encoded_audio = audio.split(";base64,")[1]
             audio_data = base64.b64decode(encoded_audio)
+            ext = audio.split(";")[0].split("/")
+            ext = '.' +  ext[1] if len(ext) > 1 else '.' + "ogg"
 
             # Save the audio to a temporary file
-            with tempfile.NamedTemporaryFile() as tmp:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
                 tmp.write(audio_data)
                 tmp.seek(0)
-                voice_path = await asyncio.to_thread(audio_to_voice, tmp.name)
-
-            return voice_path
+                return tmp.name
     
         # Otherwise should be an URL
         response = requests.get(audio)
         if response.status_code == 200:
+            ext = '.' + response.headers.get('content-type').split('/')[-1]
             # Save the audio to a temporary file
-            with tempfile.NamedTemporaryFile() as tmp:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+                tmp.write(response.content)
+                tmp.seek(0)            
+            return tmp.name
                 tmp.write(response.content)
                 tmp.seek(0)
                 voice_path = await asyncio.to_thread(audio_to_voice, tmp.name)

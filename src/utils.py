@@ -43,21 +43,6 @@ class ReplyTo(BaseModel):
     image: Optional[str] = None 
 
 
-def audio_to_voice(input_path: str) -> str:
-    """Convert audio to Telegram voice format"""
-    output_path = os.path.splitext(input_path)[0] + "_voice.ogg"
-    ffmpeg.input(input_path).output(
-        output_path,
-        codec="libopus",
-        audio_bitrate="32k",
-        vbr="on",
-        compression_level=10,
-        frame_duration=60,
-        application="voip"
-    ).run()
-    return output_path
-
-
 def encode_image(image_bytes: bytes) -> str:
     """
     Encodes an image from bytes to a base64 string with a data URI scheme.
