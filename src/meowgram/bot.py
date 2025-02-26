@@ -307,7 +307,7 @@ class MeowgramBot:
 
         # Handler for menus
         self.client.add_event_handler(
-            self.menu_manager,
+            self.menu_handler,
             NewMessage(incoming=True)
         )
 
