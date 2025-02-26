@@ -27,7 +27,6 @@ from meowgram.madia_handlers import (
     FormActionData
 )
 from utils import (
-    audio_to_voice,
     CatFormState,
     clean_code_blocks,
     delete_ccat_conversation
@@ -428,7 +427,6 @@ class MeowgramBot:
         # Extract Meowgram-specific parameters if present
         meowgram_params = message.get("meowgram", {})
         send_params = meowgram_params.get("send_params", {})
-        settings = meowgram_params.get("settings", {"show_tts_text": False})
         
         # Handle form buttons
         buttons = None
@@ -452,7 +450,7 @@ class MeowgramBot:
             
             buttons = button_list if button_list else None
 
-        if len(message["text"]) > 4000:
+        if message.get("text") and len(message["text"]) > 4000:
             # Send as a file if the message is too long
             with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w") as file:
                 file.write(message["text"])
@@ -466,11 +464,31 @@ class MeowgramBot:
             )
             os.remove(file_path)
             message["text"] = None
+       
+        if message.get("image"):
+            image_path = await self.process_image(message)
+            caption = None
+            if message.get("text") and message.get("audio") is None:
+                caption = message.get("text")
+                message["text"] = None
 
+            await self.client.send_file(
+                user_id,
+                image_path,
+                caption=caption,
+                buttons=buttons,
+                **send_params
+            )
+            await asyncio.to_thread(os.remove, image_path)
+        
         # Handle TTS
         if  message.get("audio"):
             voice_path = await self.process_audio(message)
-            caption = message["text"] if settings["show_tts_text"] else None
+            caption = None
+            if message.get("text"):
+                caption = message.get("text")
+                message["text"] = None
+
             await self.client.send_file(
                 user_id,
                 voice_path,
@@ -480,22 +498,19 @@ class MeowgramBot:
                 **send_params
             )
             await asyncio.to_thread(os.remove, voice_path)
-            return
-                
-        if not message.get("text"):
-            return
-        
-        # Remove language specification from code blocks
-        # to prevent Telegram from showing the language twice
-        text = clean_code_blocks(message["text"])
 
-        # Send regular message
-        await self.client.send_message(
-            user_id,
-            text,
-            buttons=buttons,
-            **send_params
-        )
+        if message.get("text"):
+            # Remove language specification from code blocks
+            # to prevent Telegram from showing the language twice
+            text = clean_code_blocks(message["text"])
+
+            # Send regular message
+            await self.client.send_message(
+                user_id,
+                text,
+                buttons=buttons,
+                **send_params
+            )
        
     async def handle_chat_token(self, user_id: int, seconds: int = 5): 
         current_time = time.time()  
@@ -554,11 +569,39 @@ class MeowgramBot:
                 tmp.write(response.content)
                 tmp.seek(0)            
             return tmp.name
+        
+    async def process_image(self, message: dict):
+        """
+        Handles an image message from Cheshire Cat.
+
+        Args:
+            user_id (int): The ID of the user to send the image message to.
+            message (dict): The image message to be sent.
+        """
+        image = message.get("image")
+        # Check if image is a data uri
+        if image.startswith("data:"):
+            # Extract the mime type and the base64 encoded image
+            encoded_image = image.split(";base64,")[1]
+            image_data = base64.b64decode(encoded_image)
+            image_ext = image.split(";")[0].split("/")
+            image_ext = '.' +  image_ext[1] if len(image_ext) > 1 else '.' + "jpg"
+
+            # Save the image to a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=image_ext) as tmp:
+                tmp.write(image_data)
+                tmp.seek(0)
+                return tmp.name
+
+        # Otherwise should be an URL
+        response = requests.get(image)
+        if response.status_code == 200:
+            image_ext = '.' + response.headers.get('content-type').split('/')[-1]
+            # Save the image to a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=image_ext) as tmp:
                 tmp.write(response.content)
                 tmp.seek(0)
-                voice_path = await asyncio.to_thread(audio_to_voice, tmp.name)
-            
-            return voice_path
+                return tmp.name
 
     async def send_temporary_message(self, user_id: int, message: str, seconds: int = 7):
         """
