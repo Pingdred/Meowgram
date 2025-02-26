@@ -1,89 +1,103 @@
 ## Meowgram
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Pingdred/Meowgram/main/logo.png"/>
+  <img src="https://raw.githubusercontent.com/Pingdred/Meowgram/main/logo.png" alt="Meowgram logo"/>
 </p>
 
-Welcome to Meowgram, a Telegram client designed to seamlessly integrate with [Cheshire Cat Ai](https://cheshirecat.ai/).
+Welcome to **Meowgram**, a Telegram client designed to seamlessly integrate with [Cheshire Cat Ai](https://cheshirecat.ai/).
+
+---
 
 ## Prerequisites
 
-- `python >=3.10`
-- Access to an instance of the [Cheshire Cat](https://github.com/cheshire-cat-ai/core#quickstart)
-- A Telegram bot `TOKEN`, which you can obtain by creating one through [Bot Father](https://core.telegram.org/bots/features#creating-a-new-bot)
+Before you begin, make sure you have the following:
+
+- Python `>= 3.10`
+- A running instance of [Cheshire Cat](https://github.com/cheshire-cat-ai/core#quickstart) (version `>= 1.8.0`)
+- Telegram **API Hash**
+- A **Telegram bot TOKEN**, which you can get by creating a bot through [BotFather](https://core.telegram.org/bots/features#creating-a-new-bot)
+
+### Obtaining the API Hash
+
+1. Log in to your Telegram account using the developer phone number.
+2. Navigate to **API Development Tools**.
+3. In the **Create New Application** window, fill in the App title and Short name.
+4. Click **Create Application**. Your **API Hash** is secret—**do not share it**.
+
+---
 
 ## Installation
 
-To get started, follow these simple steps:
+Follow these steps to get Meowgram up and running:
 
-Clone the repository:
+1. **Clone the repository:**
 
-  ```bash
-  git clone https://github.com/Pingdred/Meowgram.git
-  ```
+   ```bash
+   git clone https://github.com/Pingdred/Meowgram.git
+   ```
 
-Navigate to the project directory:
+2. **Navigate to the project directory:**
 
-  ```bash
-  cd Meowgram
-  ```
+   ```bash
+   cd Meowgram
+   ```
 
-Install the necessary dependencies:
+3. **Install dependencies:**
 
-```bash
-pip install -r requirements.txt
-```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Create an `.env` file and set the following parameters:
+4. **Create a `.env` file** and set the following parameters:
 
-```toml
-BOT_TOKEN="YOUR-BOT-TOKEN"
+   ```toml
+   API_ID = "API_ID"
+   API_HASH = "API_HASH"
+   BOT_TOKEN = "YOUR-BOT-TOKEN"
 
-CHESHIRE_CAT_URL="localhost"
-CHESHIRE_CAT_PORT=1865
-```
+   CHESHIRE_CAT_URL = "localhost"
+   CHESHIRE_CAT_PORT = 1865
+   ```
 
-You can use the provided `.env.example` file as a template.
+   You can use the provided `.env.example` file as a template.
 
-> [!IMPORTANT]
-> Ensure your Cheshire Cat instance is up and running by following the [quick start guide](https://github.com/cheshire-cat-ai/core#quickstart).
+> **Important:**  
+> Ensure that your Cheshire Cat instance is running by following the [quick start guide](https://github.com/cheshire-cat-ai/core#quickstart).
 
-Run the Meowgram Telegram bot:
+5. **Run Meowgram**:
 
-```bash
-python main.py
-```
+   ```bash
+   python src/main.py
+   ```
+
+---
 
 ## Meowgram Connect
 
-Enhance your chatting experience with Meowgram Connect, a plugin designed to offer additional chat settings customization options. Although currently limited, more features are planned for future updates.
+**Meowgram Connect** is a plugin that enhances your chat experience with additional customization options, such as buttons for forms.
 
-You can find Meowgram Connect in the plugin registry and install it directly from the Cheshire Cat admin interface under the Plugins tab.
+You can find **Meowgram Connect** in the plugin registry and install it directly from the Cheshire Cat Admin interface under the **Plugins** tab.
 
-![Meowgram Connect](/assets/Screenshot%20from%202024-05-13%2015-46-05.png)
+![Meowgram Connect](assets/Screenshot%20from%202024-05-13%2015-46-05.png)
 
-## Sending Voice Notes
+---
 
-To send voice notes using Meowgram, you'll need to install the [Whispering Cat](https://github.com/Furrmidable-Crew/Whispering_Cat) plugin in your Cheshire Cat instance. Whispering Cat enables speech-to-text functionality, allowing you to dictate messages seamlessly.
+## Media Support
 
-> [!Note]
-> While Whispering Cat is currently the sole plugin supporting this feature, expect more options to become available in the future.
+Meowgram supports the media features introduced in Cheshire Cat `1.8.0`. Each plugin that utilizes these features is compatible with Meowgram to manage `images` and `audio`.
 
-You can install Whispering Cat from the Plugins tab in the Cheshire Cat Admin:
+### Available Plugins for Speech-to-Text (STT)
 
-![Whispering Cat](https://github.com/Pingdred/Meowgram/assets/67059270/ff652354-0e9e-4505-b307-6af90d56d0cf)
+To send voice notes via Meowgram, you need a **Speech-to-Text** (STT) plugin. Currently, the following plugins are supported:
 
-Be sure to configure Whispering Cat by providing your API Key, preferred language, and setting the `Audio Key` to `meowgram_voice`.
+- **[Whispering Cat](https://github.com/Furrmidable-Crew/Whispering_Cat)** This plugin enables speech-to-text functionality, allowing you to dictate messages seamlessly.
 
-## Receiving Voice Notes
+### Available Plugins for Text-to-Speech (TTS)
 
-Similar to sending voice notes, receiving them in Meowgram requires the installation of a plugin in Cheshire Cat. The [TTS powered by OpenAI](https://github.com/Pingdred/openai-tts) plugin facilitates text-to-speech conversion.
+To receive voice notes, you need a **Text-to-Speech** (TTS) plugin. The following plugin is currently supported:
 
-> [!Note]
-> While currently the only supported plugin for this functionality, expect additional options to emerge in the future.
+- **[TTS powered by OpenAI](https://github.com/Pingdred/openai-tts)** This plugin converts text into speech, allowing you to listen to received voice notes.
 
-You can install TTS powered by OpenAI from the Plugins tab in the Cheshire Cat Admin:
+### Add your Plugin
 
-![TTS powered by OpenAI](/assets/Screenshot%20from%202024-05-13%2015-46-35.png)
-
-After installation, ensure the `Response type` in the plugin settings is set to `TTS key`. Enjoy seamless communication with Meowgram!
+If you've developed your own plugin and would like to see it listed here, feel free to open an issue to propose the addition.
