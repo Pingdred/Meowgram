@@ -102,7 +102,7 @@ class MeowgramBot:
             access_type=os.getenv("ACCESS_TYPE", "all"),
             users=[int(id) for id in os.getenv("ACCESS_LIST", "").split(",")],
         )
-        self.menu_handler = MenuManager()
+        self.menu_manager = MenuManager()
 
         self.logger = logging.getLogger(__name__)
 
@@ -119,11 +119,11 @@ class MeowgramBot:
 
     @require_allowed_user
     async def menu_handler(self, event: NewMessage.Event):
-        current_menu = self.menu_handler.get_current_menu(event.sender_id)
+        current_menu = self.menu_manager.get_current_menu(event.sender_id)
 
         handled = False
         try:
-            handled = await self.menu_handler.handle_menu(event)
+            handled = await self.menu_manager.handle_menu(event)
         except (Exception, BaseException) as e:
             from traceback import print_exc
             print_exc()
@@ -140,9 +140,9 @@ class MeowgramBot:
         try:
             match command:
                 case "/start":
-                    menu = self.menu_handler.get_keyboard("main")
+                    menu = self.menu_manager.get_keyboard("main")
                     await event.reply("Welcome to Meowgram! How can I help you today?", buttons=menu)
-                    self.menu_handler.set_current_menu(event.sender_id, "main")
+                    self.menu_manager.set_current_menu(event.sender_id, "main")
         except Exception as e:
             from traceback import print_exc
             self.logger.error(f"An error occurred handling the command {command}: {e}")
@@ -299,15 +299,15 @@ class MeowgramBot:
             [MenuButton(text="No, cancel", submenu="main")],
         ]
 
-        self.menu_handler.create_menu("main", main_menu, parent="main")
-        self.menu_handler.create_menu("chat_history_menu", chat_history_menu, parent="main")
+        self.menu_manager.create_menu("main", main_menu, parent="main")
+        self.menu_manager.create_menu("chat_history_menu", chat_history_menu, parent="main")
 
     def set_telegram_handlers(self):
         """Setup event handlers"""
 
         # Handler for menus
         self.client.add_event_handler(
-            self.menu_handler,
+            self.menu_manager,
             NewMessage(incoming=True)
         )
 
