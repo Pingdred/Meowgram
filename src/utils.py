@@ -1,8 +1,6 @@
 
-import os
 import io
 import re
-import ffmpeg
 import base64
 import logging
 import asyncio

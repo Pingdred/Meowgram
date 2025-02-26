@@ -526,7 +526,7 @@ class MeowgramBot:
         self.last_typing_action[user_id] = current_time
 
         # Simulate typing action
-        self.logger.debug(f"Sending chat action Typing to user ")
+        self.logger.debug("Sending chat action Typing to user ")
         # Create a task to simulate typing and return immediately to avoid blocking
         asyncio.create_task(self.simulate_action(user_id, seconds))
 
