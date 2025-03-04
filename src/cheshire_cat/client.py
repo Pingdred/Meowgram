@@ -56,6 +56,8 @@ class CheshireCatClient:
                 except json.JSONDecodeError:
                     self.logger.error("Ricevuto messaggio JSON non valido")
                 except Exception as e:
+                    from traceback import print_exc
+                    print_exc()
                     self.logger.error(f"Errore nella gestione del messaggio: {e}")
                     self.logger.error(f"Message: {msg.data}")
 

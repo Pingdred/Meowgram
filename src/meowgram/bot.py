@@ -450,20 +450,23 @@ class MeowgramBot:
             
             buttons = button_list if button_list else None
 
-        if message.get("text") and len(message["text"]) > 4000:
-            # Send as a file if the message is too long
-            with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="w") as file:
-                file.write(message["text"])
-                file_path = file.name
+        async def send_text_as_file(message: dict):
+            await self.send_temporary_message(user_id, "The message is too long to be sent as text. Sending as a file.")
+            with tempfile.TemporaryDirectory() as tempdir:
+                file_path = os.path.join(tempdir, "message.txt")
+                with open(file_path, "w") as file:
+                    file.write(message["text"])
 
-            await self.client.send_file(
-                user_id,
-                file_path,
-                buttons=buttons,
-                **send_params
-            )
-            os.remove(file_path)
+                await self.client.send_file(
+                    user_id,
+                    file_path,
+                    buttons=buttons,
+                    **send_params
+                )
             message["text"] = None
+
+        if message.get("text") and len(message["text"]) > 4000:
+            await send_text_as_file(message)
        
         if message.get("image"):
             image_path = await self.process_image(message)
@@ -486,8 +489,13 @@ class MeowgramBot:
             voice_path = await self.process_audio(message)
             caption = None
             if message.get("text"):
-                caption = message.get("text")
-                message["text"] = None
+                # Send as a file if the text is too long
+                # text length limit for caption is 1024
+                if len(message["text"]) > 1000:
+                    await send_text_as_file(message)
+                else:
+                    caption = message.get("text")
+                    message["text"] = None
 
             await self.client.send_file(
                 user_id,
