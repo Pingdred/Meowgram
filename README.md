@@ -96,7 +96,7 @@ To send voice notes via Meowgram, you need a **Speech-to-Text** (STT) plugin. Cu
 
 To receive voice notes, you need a **Text-to-Speech** (TTS) plugin. The following plugin is currently supported:
 
-- **[TTS powered by OpenAI](https://github.com/Pingdred/openai-tts)** This plugin converts text into speech, allowing you to listen to received voice notes.
+- **[TTS powered by OpenAI](https://github.com/Pingdred/openai-tts)** This plugin converts text into speech, allowing you to listen to received voice notes. To see the audio as a voice message, set `opus` as the Speech Format in the plugin settings.
 
 ### Add your Plugin
 
